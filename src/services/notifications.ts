@@ -1,17 +1,22 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (Platform.OS !== 'web') {
+  import('expo-notifications').then((Notifications) => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  });
+}
 
 export async function requestNotificationPermissions(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  const Notifications = await import('expo-notifications');
+  const Device = await import('expo-device');
   if (!Device.isDevice) return false;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -40,6 +45,8 @@ export async function sendStoreNotification(
   item: ShoppingItem,
   storeName: string
 ): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const Notifications = await import('expo-notifications');
   const storeLabel = STORE_TYPE_LABELS[item.storeType];
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -48,6 +55,6 @@ export async function sendStoreNotification(
       data: { itemId: item.id },
       ...(Platform.OS === 'android' && { channelId: 'store-reminders' }),
     },
-    trigger: null, // fire immediately
+    trigger: null,
   });
 }

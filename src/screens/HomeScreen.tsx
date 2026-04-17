@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -73,7 +73,10 @@ const styles = StyleSheet.create({
     width: 58, height: 58, borderRadius: 29,
     backgroundColor: C.accent,
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: C.accent, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5, shadowRadius: 12, elevation: 8,
+    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: `0px 6px 12px ${C.accent}80` } as any,
+      default: { shadowColor: C.accent, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 12 },
+    }),
   },
 });

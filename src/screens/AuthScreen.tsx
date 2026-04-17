@@ -7,13 +7,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform as RNPlatform } from 'react-native';
 import { C } from '../theme';
 import { signInEmail, registerEmail, signInWithGoogle, signInWithMicrosoft, signInWithApple } from '../services/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Cast once to avoid per-line TS errors for EXPO_PUBLIC_* vars
 const ENV = process.env as Record<string, string | undefined>;
 
 const MICROSOFT_DISCOVERY = {
@@ -21,50 +19,81 @@ const MICROSOFT_DISCOVERY = {
   tokenEndpoint:         'https://login.microsoftonline.com/common/oauth2/v2.0/token',
 };
 
-export default function AuthScreen() {
-  const [mode,     setMode]     = useState<'signin' | 'register'>('signin');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState<string | null>(null);
-
-  // ─── Google ────────────────────────────────────────────────────────────────
-  const [googleRequest, googleResponse, googlePrompt] = Google.useAuthRequest({
+// ─── Google button extracted so the hook only runs when clientId is available ──
+function GoogleSignInButton({ loading, onLoading }: { loading: string | null; onLoading: (v: string | null) => void }) {
+  const [req, res, prompt] = Google.useAuthRequest({
     webClientId:     ENV.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     iosClientId:     ENV.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: ENV.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
   });
 
   useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const { authentication } = googleResponse;
+    if (res?.type === 'success') {
+      const { authentication } = res;
       if (authentication?.idToken) {
         signInWithGoogle(authentication.idToken, authentication.accessToken ?? undefined)
-          .catch((e) => Alert.alert('Google sign-in failed', e.message));
+          .catch((e) => Alert.alert('Google sign-in failed', e.message))
+          .finally(() => onLoading(null));
       }
+    } else if (res?.type === 'error' || res?.type === 'dismiss') {
+      onLoading(null);
     }
-  }, [googleResponse]);
+  }, [res]);
 
-  // ─── Microsoft ─────────────────────────────────────────────────────────────
+  return (
+    <SocialBtn
+      icon="google"
+      label="Google"
+      color="#EA4335"
+      loading={loading === 'google'}
+      disabled={!req}
+      onPress={() => { onLoading('google'); prompt(); }}
+    />
+  );
+}
+
+// ─── Microsoft button extracted so the hook only runs when clientId is available ─
+function MicrosoftSignInButton({ loading, onLoading }: { loading: string | null; onLoading: (v: string | null) => void }) {
   const msClientId = ENV.EXPO_PUBLIC_MICROSOFT_CLIENT_ID ?? '';
-  const [msRequest, msResponse, msPrompt] = AuthSession.useAuthRequest(
-    {
-      clientId:    msClientId,
-      scopes:      ['openid', 'profile', 'email'],
-      redirectUri: AuthSession.makeRedirectUri({ scheme: 'remindme' }),
-    },
+  const [req, res, prompt] = AuthSession.useAuthRequest(
+    { clientId: msClientId, scopes: ['openid', 'profile', 'email'], redirectUri: AuthSession.makeRedirectUri({ scheme: 'remindme' }) },
     msClientId ? MICROSOFT_DISCOVERY : null
   );
 
   useEffect(() => {
-    if (msResponse?.type === 'success' && msResponse.authentication?.accessToken) {
-      signInWithMicrosoft(msResponse.authentication.accessToken)
-        .catch((e) => Alert.alert('Microsoft sign-in failed', e.message));
+    if (res?.type === 'success' && res.authentication?.accessToken) {
+      signInWithMicrosoft(res.authentication.accessToken)
+        .catch((e) => Alert.alert('Microsoft sign-in failed', e.message))
+        .finally(() => onLoading(null));
+    } else if (res?.type === 'error' || res?.type === 'dismiss') {
+      onLoading(null);
     }
-  }, [msResponse]);
+  }, [res]);
+
+  return (
+    <SocialBtn
+      icon="microsoft"
+      label="Microsoft"
+      color="#00A4EF"
+      loading={loading === 'microsoft'}
+      disabled={!req || !msClientId}
+      onPress={() => { onLoading('microsoft'); prompt(); }}
+    />
+  );
+}
+
+export default function AuthScreen() {
+  const [mode,     setMode]     = useState<'signin' | 'register'>('signin');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [loading,  setLoading]  = useState<string | null>(null);
+
+  const googleWebClientId = ENV.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  const msClientId        = ENV.EXPO_PUBLIC_MICROSOFT_CLIENT_ID;
 
   // ─── Apple (iOS only) ──────────────────────────────────────────────────────
   async function handleApple() {
-    if (RNPlatform.OS !== 'ios') {
+    if (Platform.OS !== 'ios') {
       Alert.alert('Apple Sign-In', 'Apple Sign-In is only available on iOS devices.');
       return;
     }
@@ -108,9 +137,16 @@ export default function AuthScreen() {
         </View>
 
         <View style={styles.socialRow}>
-          <SocialBtn icon="google"    label="Google"    color="#EA4335" loading={loading === 'google'}    disabled={!googleRequest}          onPress={() => { setLoading('google');    googlePrompt().finally(() => setLoading(null)); }} />
-          <SocialBtn icon="microsoft" label="Microsoft" color="#00A4EF" loading={loading === 'microsoft'} disabled={!msRequest || !msClientId} onPress={() => { setLoading('microsoft'); msPrompt().finally(() => setLoading(null)); }} />
-          <SocialBtn icon="apple"     label="Apple"     color="#fff"    loading={loading === 'apple'}                                        onPress={handleApple} />
+          {/* Only mount Google/Microsoft buttons when client IDs are configured */}
+          {(googleWebClientId || Platform.OS !== 'web')
+            ? <GoogleSignInButton loading={loading} onLoading={setLoading} />
+            : <SocialBtn icon="google" label="Google" color="#EA4335" loading={false} disabled onPress={() => {}} />
+          }
+          {(msClientId || Platform.OS !== 'web')
+            ? <MicrosoftSignInButton loading={loading} onLoading={setLoading} />
+            : <SocialBtn icon="microsoft" label="Microsoft" color="#00A4EF" loading={false} disabled onPress={() => {}} />
+          }
+          <SocialBtn icon="apple" label="Apple" color="#fff" loading={loading === 'apple'} onPress={handleApple} />
         </View>
 
         <View style={styles.divRow}>

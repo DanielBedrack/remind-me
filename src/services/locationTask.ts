@@ -1,33 +1,27 @@
-import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { ShoppingItem } from '../types';
 import { findNearbyStores } from './places';
 import { sendStoreNotification } from './notifications';
-import { ShoppingItem } from '../types';
 
 export const LOCATION_TASK_NAME = 'background-location-task';
 
 const NOTIF_STATE_KEY = 'notif_state_v2';
 
-/**
- * Per-item state persisted across background wakes and foreground checks.
- *
- * insideRadius: true while the user is within 300 m of a matching store.
- *   Flips to false when no matching store is found → triggers re-notify on
- *   next entry, implementing "exit and re-enter" semantics.
- *
- * lastPlaceId: which store triggered the last notification. A different
- *   nearby store (same type, different placeId) counts as a new entry.
- */
 interface ItemNotifState {
   insideRadius: boolean;
   lastPlaceId: string | null;
   notifiedAt: number;
 }
 
+async function getAsyncStorage() {
+  const mod = await import('@react-native-async-storage/async-storage');
+  return mod.default;
+}
+
 async function loadNotifState(): Promise<Record<string, ItemNotifState>> {
   try {
-    const raw = await AsyncStorage.getItem(NOTIF_STATE_KEY);
+    const AS = await getAsyncStorage();
+    const raw = await AS.getItem(NOTIF_STATE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -35,25 +29,22 @@ async function loadNotifState(): Promise<Record<string, ItemNotifState>> {
 }
 
 async function saveNotifState(state: Record<string, ItemNotifState>): Promise<void> {
-  await AsyncStorage.setItem(NOTIF_STATE_KEY, JSON.stringify(state));
+  const AS = await getAsyncStorage();
+  await AS.setItem(NOTIF_STATE_KEY, JSON.stringify(state));
 }
 
-/**
- * Core check — shared by the background task and the foreground AppState hook.
- * Reads items from the AsyncStorage cache written by useItems.ts.
- */
 export async function checkNearbyStoresAndNotify(
   latitude: number,
   longitude: number
 ): Promise<void> {
-  const raw = await AsyncStorage.getItem('shopping_items');
+  const AS = await getAsyncStorage();
+  const raw = await AS.getItem('shopping_items');
   if (!raw) return;
   const items: ShoppingItem[] = JSON.parse(raw);
   if (!items.length) return;
 
   const state = await loadNotifState();
 
-  // Group items by store type — one Places API call per type
   const byType = new Map<string, ShoppingItem[]>();
   for (const item of items) {
     const list = byType.get(item.storeType) ?? [];
@@ -82,7 +73,6 @@ export async function checkNearbyStoresAndNotify(
       };
 
       if (nearestPlaceId === null) {
-        // No store nearby — user has exited (or was never inside)
         if (prev.insideRadius) {
           state[item.id] = { insideRadius: false, lastPlaceId: null, notifiedAt: prev.notifiedAt };
           stateChanged = true;
@@ -90,12 +80,10 @@ export async function checkNearbyStoresAndNotify(
         continue;
       }
 
-      // Store is nearby
       const isNewEntry = !prev.insideRadius;
       const isDifferentStore = prev.lastPlaceId !== nearestPlaceId;
 
       if (isNewEntry || isDifferentStore) {
-        // Entered a (new) store's radius — fire notification
         await sendStoreNotification(item, nearestName);
         state[item.id] = {
           insideRadius: true,
@@ -104,11 +92,9 @@ export async function checkNearbyStoresAndNotify(
         };
         stateChanged = true;
       }
-      // else: already inside this store's radius — stay silent
     }
   }
 
-  // Clean up state entries for items that no longer exist
   for (const itemId of Object.keys(state)) {
     if (!items.find((i) => i.id === itemId)) {
       delete state[itemId];
@@ -119,62 +105,54 @@ export async function checkNearbyStoresAndNotify(
   if (stateChanged) await saveNotifState(state);
 }
 
-// ─── Background task definition ────────────────────────────────────────────
-
-TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: TaskManager.TaskManagerTaskBody<{ locations: Location.LocationObject[] }>) => {
-  if (error) return;
-  const { locations } = data ?? {};
-  if (!locations?.length) return;
-  const { latitude, longitude } = locations[0].coords;
-  try {
-    await checkNearbyStoresAndNotify(latitude, longitude);
-  } catch {
-    // Background tasks must never throw
-  }
-});
-
-// ─── Foreground one-shot check ──────────────────────────────────────────────
-
-/**
- * Called when the app comes to the foreground via AppState.
- * Gets the current position once and runs the same logic as the background task.
- */
 export async function runForegroundCheck(): Promise<void> {
+  if (Platform.OS === 'web') return;
   try {
+    const Location = await import('expo-location');
     const loc = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
     await checkNearbyStoresAndNotify(loc.coords.latitude, loc.coords.longitude);
   } catch {
-    // Silently skip if location unavailable in foreground
+    // Silently skip if location unavailable
   }
 }
 
-// ─── Lifecycle ──────────────────────────────────────────────────────────────
-
 export async function startLocationTracking(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const Location = await import('expo-location');
+  const TaskManager = await import('expo-task-manager');
+
   const { status: fg } = await Location.requestForegroundPermissionsAsync();
   if (fg !== 'granted') throw new Error('Foreground location permission denied');
 
   const { status: bg } = await Location.requestBackgroundPermissionsAsync();
   if (bg !== 'granted') throw new Error('Background location permission denied');
 
-  const already = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(
-    () => false
-  );
+  const already = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
   if (already) return;
+
+  // Define the task right before starting (safe on native, never runs on web)
+  if (!TaskManager.isTaskDefined(LOCATION_TASK_NAME)) {
+    TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
+      if (error) return;
+      const { locations } = data ?? {};
+      if (!locations?.length) return;
+      const { latitude, longitude } = locations[0].coords;
+      try {
+        await checkNearbyStoresAndNotify(latitude, longitude);
+      } catch {
+        // Background tasks must never throw
+      }
+    });
+  }
 
   await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
     accuracy: Location.Accuracy.Balanced,
-    // Wake up after 100 m of movement (was 50 m) — halves wake-ups in urban areas
     distanceInterval: 100,
-    // Batch updates over 90 s so the task fires at most once per 90 s even if
-    // the user is moving continuously (iOS deferred updates, Android batching)
     deferredUpdatesInterval: 90_000,
     deferredUpdatesDistance: 100,
-    // Let iOS suspend updates when the device is stationary (significant power saving)
     pausesLocationsUpdatesAutomatically: true,
-    // Hint to iOS that this is pedestrian/vehicle navigation → better duty-cycling
     activityType: Location.ActivityType.OtherNavigation,
     showsBackgroundLocationIndicator: true,
     foregroundService: {
@@ -186,8 +164,8 @@ export async function startLocationTracking(): Promise<void> {
 }
 
 export async function stopLocationTracking(): Promise<void> {
-  const running = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(
-    () => false
-  );
+  if (Platform.OS === 'web') return;
+  const Location = await import('expo-location');
+  const running = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
   if (running) await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
 }
