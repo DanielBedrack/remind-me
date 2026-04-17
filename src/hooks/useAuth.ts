@@ -1,20 +1,18 @@
 import { useState, useEffect } from 'react';
-import { signInAnon, auth } from '../services/firebase';
+import { User } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 export function useAuth() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => {
-      setUserId(user?.uid ?? null);
+    const unsub = auth.onAuthStateChanged((u) => {
+      setUser(u);
       setReady(true);
     });
-
-    signInAnon().catch(console.error);
-
     return unsub;
   }, []);
 
-  return { userId, ready };
+  return { user, userId: user?.uid ?? null, ready };
 }

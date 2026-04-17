@@ -5,6 +5,7 @@ export interface ShoppingItem {
   name: string;
   quantity: number;
   storeType: StoreType;
+  storeName?: string;
   userId: string;
   createdAt: number;
   /** placeId of the store that last triggered a notification for this item */

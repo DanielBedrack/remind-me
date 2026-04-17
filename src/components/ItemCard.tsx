@@ -1,20 +1,22 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
 
 const STORE_COLORS: Record<string, string> = {
   supermarket: '#4CAF50',
-  hardware: '#FF9800',
-  pharmacy: '#2196F3',
-  general: '#9C27B0',
+  hardware:    '#FF9800',
+  pharmacy:    '#2196F3',
+  general:     '#9C27B0',
 };
 
 interface Props {
   item: ShoppingItem;
+  onEdit:   (item: ShoppingItem) => void;
   onDelete: (id: string) => void;
 }
 
-export default function ItemCard({ item, onDelete }: Props) {
+export default function ItemCard({ item, onEdit, onDelete }: Props) {
   const color = STORE_COLORS[item.storeType] ?? '#666';
 
   return (
@@ -25,11 +27,17 @@ export default function ItemCard({ item, onDelete }: Props) {
 
       <View style={styles.body}>
         <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.qty}>Qty: {item.quantity}</Text>
+        <Text style={styles.sub}>
+          Qty: {item.quantity}
+          {item.storeName ? `  ·  ${item.storeName}` : ''}
+        </Text>
       </View>
 
-      <TouchableOpacity onPress={() => onDelete(item.id)} style={styles.deleteBtn}>
-        <Text style={styles.deleteText}>✕</Text>
+      <TouchableOpacity onPress={() => onEdit(item)} style={styles.btn}>
+        <MaterialCommunityIcons name="pencil-outline" size={18} color="#aaa" />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => onDelete(item.id)} style={styles.btn}>
+        <MaterialCommunityIcons name="close" size={18} color="#ccc" />
       </TouchableOpacity>
     </View>
   );
@@ -50,35 +58,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  badge: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 12,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  body: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  qty: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2,
-  },
-  deleteBtn: {
-    padding: 6,
-  },
-  deleteText: {
-    fontSize: 16,
-    color: '#ccc',
-  },
+  badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginRight: 12 },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  body: { flex: 1 },
+  name: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+  sub:  { fontSize: 13, color: '#888', marginTop: 2 },
+  btn:  { padding: 6 },
 });
