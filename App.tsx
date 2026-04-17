@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, AppState, AppStateStatus, TouchableOpacity, Text } from 'react-native';
@@ -12,6 +12,7 @@ import { useItems } from './src/hooks/useItems';
 import { requestNotificationPermissions } from './src/services/notifications';
 import { startLocationTracking, runForegroundCheck } from './src/services/locationTask';
 import { signOut } from './src/services/firebase';
+import { C } from './src/theme';
 import { ShoppingItem } from './src/types';
 
 export type RootStackParamList = {
@@ -22,22 +23,24 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const NavTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: C.bg },
+};
+
 export default function App() {
   const { userId, ready } = useAuth();
-  const { items, loading, add, update, remove } = useItems(userId);
+  const { items, loading, add, update, updateQuantity, remove } = useItems(userId);
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     async function init() {
       const notifOk = await requestNotificationPermissions();
-      if (!notifOk) {
-        Alert.alert('Notifications disabled', 'Enable notifications in Settings to receive store reminders.');
-      }
+      if (!notifOk) Alert.alert('Notifications disabled', 'Enable notifications in Settings to receive store reminders.');
       try {
         await startLocationTracking();
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        Alert.alert('Location permission needed', msg);
+        Alert.alert('Location permission needed', e instanceof Error ? e.message : String(e));
       }
     }
     if (ready && userId) init();
@@ -54,14 +57,15 @@ export default function App() {
   }, [ready, userId]);
 
   return (
-    <NavigationContainer>
-      <StatusBar style="dark" />
+    <NavigationContainer theme={NavTheme}>
+      <StatusBar style="light" />
       <Stack.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: '#f5f5f7' },
+          headerStyle: { backgroundColor: C.card },
           headerShadowVisible: false,
-          headerTitleStyle: { fontWeight: '700', fontSize: 18 },
-          contentStyle: { backgroundColor: '#f5f5f7' },
+          headerTitleStyle: { fontWeight: '800', fontSize: 18, color: C.textPrimary },
+          headerTintColor: C.accent,
+          contentStyle: { backgroundColor: C.bg },
         }}
       >
         {ready && !userId ? (
@@ -76,7 +80,7 @@ export default function App() {
                 title: 'RemindMe',
                 headerRight: () => (
                   <TouchableOpacity onPress={() => signOut()} style={{ paddingHorizontal: 4 }}>
-                    <Text style={{ color: '#4A90E2', fontSize: 14 }}>Sign out</Text>
+                    <Text style={{ color: C.textSecondary, fontSize: 14 }}>Sign out</Text>
                   </TouchableOpacity>
                 ),
               }}
@@ -86,6 +90,7 @@ export default function App() {
                   items={items}
                   loading={loading || !ready}
                   onDelete={remove}
+                  onQtyChange={updateQuantity}
                 />
               )}
             </Stack.Screen>
@@ -95,7 +100,7 @@ export default function App() {
               options={({ route }) => ({
                 title: route.params?.editItem ? 'Edit Item' : 'Add Item',
                 presentation: 'modal',
-                headerStyle: { backgroundColor: '#fff' },
+                headerStyle: { backgroundColor: C.card },
               })}
             >
               {() => <AddItemScreen onAdd={add} onUpdate={update} />}

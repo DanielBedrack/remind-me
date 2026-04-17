@@ -1,0 +1,88 @@
+export const C = {
+  bg:          '#0C0C0F',
+  card:        '#1A1A1F',
+  cardBorder:  '#2A2A32',
+  textPrimary: '#FFFFFF',
+  textSecondary:'#8E8E9A',
+  accent:      '#5B9EFF',
+  accentDim:   '#1A2F55',
+  danger:      '#FF4A4A',
+  green:       '#34C759',
+  orange:      '#FF9F0A',
+  purple:      '#BF5AF2',
+  inputBg:     '#1E1E26',
+};
+
+export const STORE_COLORS: Record<string, string> = {
+  supermarket: '#34C759',
+  hardware:    '#FF9F0A',
+  pharmacy:    '#5B9EFF',
+  general:     '#BF5AF2',
+};
+
+export const PRODUCT_EMOJI: Record<string, string> = {
+  // Supermarket
+  Milk:            '🥛',
+  Bread:           '🍞',
+  Eggs:            '🥚',
+  Butter:          '🧈',
+  Cheese:          '🧀',
+  Yogurt:          '🫙',
+  Chicken:         '🍗',
+  Rice:            '🍚',
+  Pasta:           '🍝',
+  Tomatoes:        '🍅',
+  Onions:          '🧅',
+  Apples:          '🍎',
+  Bananas:         '🍌',
+  'Orange Juice':  '🍊',
+  Coffee:          '☕',
+  Sugar:           '🍬',
+  Flour:           '🌾',
+  Oil:             '🫙',
+  // Hardware
+  Screws:          '🔩',
+  Nails:           '🔨',
+  Paint:           '🎨',
+  'Drill Bits':    '🔧',
+  Sandpaper:       '📋',
+  'Light Bulbs':   '💡',
+  'Duct Tape':     '📦',
+  'WD-40':         '🛢️',
+  'Cable Ties':    '🔗',
+  'Wall Plugs':    '🔌',
+  'Extension Cord':'⚡',
+  Paintbrush:      '🖌️',
+  Putty:           '🪣',
+  // Pharmacy
+  Aspirin:         '💊',
+  Bandages:        '🩹',
+  Vitamins:        '🌿',
+  Sunscreen:       '🧴',
+  Ibuprofen:       '💊',
+  'Cough Syrup':   '🍶',
+  'Hand Sanitizer':'🧴',
+  Thermometer:     '🌡️',
+  'Eye Drops':     '👁️',
+  Antacid:         '💊',
+  'Allergy Pills': '💊',
+  Paracetamol:     '💊',
+  'Band-Aid':      '🩹',
+  // General
+  'Trash Bags':    '🗑️',
+  'Cleaning Spray':'🧹',
+  'Paper Towels':  '🧻',
+  'Toilet Paper':  '🧻',
+  'Dish Soap':     '🧼',
+  'Laundry Detergent':'🧺',
+  Sponges:         '🧽',
+  Candles:         '🕯️',
+  'Zip Bags':      '📦',
+  'Aluminum Foil': '🪞',
+  Matches:         '🔥',
+  'Air Freshener': '🌸',
+};
+
+export function productEmoji(name: string): string {
+  return PRODUCT_EMOJI[name] ?? '🛍️';
+}

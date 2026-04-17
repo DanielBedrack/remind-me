@@ -27,9 +27,14 @@ export function useItems(userId: string | null) {
     await updateItem(itemId, { name, quantity, storeType, storeName });
   }
 
+  async function updateQuantity(itemId: string, quantity: number) {
+    if (quantity < 1) return;
+    await updateItem(itemId, { quantity });
+  }
+
   async function remove(itemId: string) {
     await removeItem(itemId);
   }
 
-  return { items, loading, add, update, remove };
+  return { items, loading, add, update, updateQuantity, remove };
 }
