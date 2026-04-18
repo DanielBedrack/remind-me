@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
-  signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithCredential,
@@ -12,7 +11,9 @@ import {
   User,
 } from 'firebase/auth';
 import {
+  Firestore,
   initializeFirestore,
+  getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
   collection,
@@ -27,29 +28,32 @@ import {
 } from 'firebase/firestore';
 import { ShoppingItem } from '../types';
 
+const ENV = process.env as Record<string, string | undefined>;
+
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey:            ENV.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain:        ENV.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         ENV.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     ENV.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: ENV.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             ENV.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const app  = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-});
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
-
-export async function signInAnon(): Promise<User> {
-  const existing = auth.currentUser;
-  if (existing) return existing;
-  const cred = await signInAnonymously(auth);
-  return cred.user;
+// persistentLocalCache (IndexedDB) fails in private browsing — fall back gracefully
+let _db: Firestore;
+try {
+  _db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
+} catch {
+  _db = getFirestore(app);
 }
+export const db = _db;
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function signInEmail(email: string, password: string): Promise<User> {
   const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -93,7 +97,7 @@ export function waitForUser(): Promise<User> {
   });
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
@@ -104,7 +108,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
-// ─── Firestore ───────────────────────────────────────────────────────────────
+// ─── Firestore ────────────────────────────────────────────────────────────────
 
 export async function addItem(
   userId: string,

@@ -1,0 +1,112 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK",
+    "error": "Error",
+    "loading": "Cargando...",
+    "saving": "Guardando...",
+    "signOut": "Cerrar sesión",
+    "restartRequired": "Reinicio necesario",
+    "restartMessage": "La app necesita reiniciarse para aplicar el nuevo idioma."
+  },
+  "tabs": {
+    "home": "Inicio",
+    "list": "Lista",
+    "history": "Historial",
+    "profile": "Perfil"
+  },
+  "auth": {
+    "title": "RemindMe",
+    "subtitle": "Tu recordatorio de compras inteligente",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "createAccount": "Crear cuenta",
+    "noAccount": "¿No tienes cuenta?  ",
+    "hasAccount": "¿Ya tienes cuenta?  ",
+    "register": "Registrarse",
+    "missingFields": "Campos faltantes",
+    "missingFieldsMsg": "Por favor ingresa tu correo y contraseña.",
+    "weakPassword": "Contraseña débil",
+    "weakPasswordMsg": "La contraseña debe tener al menos 6 caracteres.",
+    "signInFailed": "Error al iniciar sesión",
+    "registerFailed": "Error al registrarse",
+    "googleFailed": "Error al iniciar sesión con Google",
+    "microsoftFailed": "Error al iniciar sesión con Microsoft",
+    "appleFailed": "Error al iniciar sesión con Apple",
+    "appleIOSOnly": "Apple Sign-In solo está disponible en dispositivos iOS.",
+    "appleIOSOnlyTitle": "Apple Sign-In"
+  },
+  "dashboard": {
+    "greetingMorning": "Buenos días,",
+    "greetingAfternoon": "Buenas tardes,",
+    "greetingEvening": "Buenas noches,",
+    "locationTitle": "Tel Aviv, Israel",
+    "locationSub": "Ubicación simulada · Tiendas cercanas activas",
+    "locationStoreTypes": "3 tipos de tiendas rastreadas",
+    "demo": "DEMO",
+    "quickAdd": "¿Qué necesitas comprar?",
+    "recentItems": "Artículos recientes",
+    "total": "{{count}} en total",
+    "noItems": "Aún no hay artículos. ¡Toca + para agregar!"
+  },
+  "list": {
+    "title": "Mi lista",
+    "empty": "Tu lista está vacía",
+    "emptySub": "Toca + para agregar artículos y recibir\navisos cerca de la tienda correcta.",
+    "addFirst": "Agregar primer artículo"
+  },
+  "addItem": {
+    "titleAdd": "Agregar artículo",
+    "titleEdit": "Editar artículo",
+    "storeType": "Tipo de tienda",
+    "storeName": "Nombre de la tienda",
+    "storeNameOptional": "(opcional)",
+    "commonProducts": "Productos comunes",
+    "itemName": "Nombre del artículo",
+    "itemNamePlaceholder": "O escribe un artículo personalizado...",
+    "quantity": "Cantidad",
+    "addToList": "Agregar a la lista",
+    "saveChanges": "Guardar cambios",
+    "missingName": "Nombre faltante",
+    "missingNameMsg": "Por favor ingresa un nombre para el artículo.",
+    "invalidQty": "Cantidad inválida",
+    "invalidQtyMsg": "La cantidad debe ser al menos 1.",
+    "couldNotSave": "No se pudo guardar el artículo."
+  },
+  "history": {
+    "title": "Historial",
+    "empty": "Sin historial aún",
+    "emptySub": "Tus acciones de agregar y eliminar aparecerán aquí.",
+    "added": "Agregado",
+    "deleted": "Eliminado",
+    "updated": "Editado",
+    "today": "Hoy",
+    "yesterday": "Ayer"
+  },
+  "profile": {
+    "title": "Perfil",
+    "signedIn": "Sesión iniciada",
+    "shoppingList": "Lista de compras",
+    "totalItems": "Total de artículos",
+    "app": "Aplicación",
+    "locationTracking": "Rastreo de ubicación",
+    "notifications": "Notificaciones de tiendas",
+    "active": "Activo",
+    "on": "Activado",
+    "version": "Versión",
+    "language": "Idioma",
+    "signOutConfirm": "¿Estás seguro de que quieres cerrar sesión?"
+  },
+  "stores": {
+    "supermarket": "Supermercado",
+    "hardware": "Ferretería",
+    "pharmacy": "Farmacia",
+    "general": "Tienda general"
+  }
+}

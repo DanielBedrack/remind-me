@@ -1,0 +1,112 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "error": "Error",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "signOut": "Sign out",
+    "restartRequired": "Restart Required",
+    "restartMessage": "The app needs to restart to apply the new language direction."
+  },
+  "tabs": {
+    "home": "Home",
+    "list": "List",
+    "history": "History",
+    "profile": "Profile"
+  },
+  "auth": {
+    "title": "RemindMe",
+    "subtitle": "Your smart shopping reminder",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "noAccount": "Don't have an account?  ",
+    "hasAccount": "Already have an account?  ",
+    "register": "Register",
+    "missingFields": "Missing fields",
+    "missingFieldsMsg": "Please enter your email and password.",
+    "weakPassword": "Weak password",
+    "weakPasswordMsg": "Password must be at least 6 characters.",
+    "signInFailed": "Sign-in failed",
+    "registerFailed": "Registration failed",
+    "googleFailed": "Google sign-in failed",
+    "microsoftFailed": "Microsoft sign-in failed",
+    "appleFailed": "Apple sign-in failed",
+    "appleIOSOnly": "Apple Sign-In is only available on iOS devices.",
+    "appleIOSOnlyTitle": "Apple Sign-In"
+  },
+  "dashboard": {
+    "greetingMorning": "Good morning,",
+    "greetingAfternoon": "Good afternoon,",
+    "greetingEvening": "Good evening,",
+    "locationTitle": "Tel Aviv, Israel",
+    "locationSub": "Simulated location · Nearby stores active",
+    "locationStoreTypes": "3 store types tracked",
+    "demo": "DEMO",
+    "quickAdd": "What do you need to buy?",
+    "recentItems": "Recent Items",
+    "total": "{{count}} total",
+    "noItems": "No items yet. Tap + to add one!"
+  },
+  "list": {
+    "title": "My List",
+    "empty": "Your list is empty",
+    "emptySub": "Tap + to add items and get\nnotified near the right store.",
+    "addFirst": "Add first item"
+  },
+  "addItem": {
+    "titleAdd": "Add Item",
+    "titleEdit": "Edit Item",
+    "storeType": "Store Type",
+    "storeName": "Store Name",
+    "storeNameOptional": "(optional)",
+    "commonProducts": "Common Products",
+    "itemName": "Item Name",
+    "itemNamePlaceholder": "Or type a custom item...",
+    "quantity": "Quantity",
+    "addToList": "Add to List",
+    "saveChanges": "Save Changes",
+    "missingName": "Missing name",
+    "missingNameMsg": "Please enter an item name.",
+    "invalidQty": "Invalid quantity",
+    "invalidQtyMsg": "Quantity must be at least 1.",
+    "couldNotSave": "Could not save item."
+  },
+  "history": {
+    "title": "History",
+    "empty": "No history yet",
+    "emptySub": "Your add/remove actions will appear here.",
+    "added": "Added",
+    "deleted": "Removed",
+    "updated": "Edited",
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "profile": {
+    "title": "Profile",
+    "signedIn": "Signed in",
+    "shoppingList": "Shopping List",
+    "totalItems": "Total Items",
+    "app": "App",
+    "locationTracking": "Location tracking",
+    "notifications": "Store notifications",
+    "active": "Active",
+    "on": "On",
+    "version": "Version",
+    "language": "Language",
+    "signOutConfirm": "Are you sure you want to sign out?"
+  },
+  "stores": {
+    "supermarket": "Supermarket",
+    "hardware": "Hardware Store",
+    "pharmacy": "Pharmacy",
+    "general": "General Store"
+  }
+}

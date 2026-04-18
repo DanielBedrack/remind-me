@@ -1,0 +1,112 @@
+{
+  "common": {
+    "save": "שמור",
+    "cancel": "ביטול",
+    "delete": "מחק",
+    "edit": "ערוך",
+    "yes": "כן",
+    "no": "לא",
+    "ok": "אישור",
+    "error": "שגיאה",
+    "loading": "טוען...",
+    "saving": "שומר...",
+    "signOut": "התנתק",
+    "restartRequired": "נדרש אתחול",
+    "restartMessage": "האפליקציה צריכה להתחיל מחדש כדי להחיל את כיוון השפה החדש."
+  },
+  "tabs": {
+    "home": "בית",
+    "list": "רשימה",
+    "history": "היסטוריה",
+    "profile": "פרופיל"
+  },
+  "auth": {
+    "title": "RemindMe",
+    "subtitle": "תזכורת הקניות החכמה שלך",
+    "email": "אימייל",
+    "password": "סיסמה",
+    "signIn": "כניסה",
+    "createAccount": "יצירת חשבון",
+    "noAccount": "אין לך חשבון?  ",
+    "hasAccount": "כבר יש לך חשבון?  ",
+    "register": "הרשמה",
+    "missingFields": "שדות חסרים",
+    "missingFieldsMsg": "אנא הזן אימייל וסיסמה.",
+    "weakPassword": "סיסמה חלשה",
+    "weakPasswordMsg": "הסיסמה חייבת להכיל לפחות 6 תווים.",
+    "signInFailed": "הכניסה נכשלה",
+    "registerFailed": "ההרשמה נכשלה",
+    "googleFailed": "הכניסה עם Google נכשלה",
+    "microsoftFailed": "הכניסה עם Microsoft נכשלה",
+    "appleFailed": "הכניסה עם Apple נכשלה",
+    "appleIOSOnly": "כניסה עם Apple זמינה רק במכשירי iOS.",
+    "appleIOSOnlyTitle": "כניסה עם Apple"
+  },
+  "dashboard": {
+    "greetingMorning": "בוקר טוב,",
+    "greetingAfternoon": "צהריים טובים,",
+    "greetingEvening": "ערב טוב,",
+    "locationTitle": "תל אביב, ישראל",
+    "locationSub": "מיקום מדומה · חנויות קרובות פעילות",
+    "locationStoreTypes": "3 סוגי חנויות במעקב",
+    "demo": "הדגמה",
+    "quickAdd": "מה אתה צריך לקנות?",
+    "recentItems": "פריטים אחרונים",
+    "total": "{{count}} סה\"כ",
+    "noItems": "אין פריטים עדיין. לחץ + להוסיף!"
+  },
+  "list": {
+    "title": "הרשימה שלי",
+    "empty": "הרשימה שלך ריקה",
+    "emptySub": "לחץ + להוסיף פריטים וקבל\nהתראות ליד החנות המתאימה.",
+    "addFirst": "הוסף פריט ראשון"
+  },
+  "addItem": {
+    "titleAdd": "הוסף פריט",
+    "titleEdit": "ערוך פריט",
+    "storeType": "סוג חנות",
+    "storeName": "שם החנות",
+    "storeNameOptional": "(אופציונלי)",
+    "commonProducts": "מוצרים נפוצים",
+    "itemName": "שם הפריט",
+    "itemNamePlaceholder": "או הקלד פריט מותאם...",
+    "quantity": "כמות",
+    "addToList": "הוסף לרשימה",
+    "saveChanges": "שמור שינויים",
+    "missingName": "שם חסר",
+    "missingNameMsg": "אנא הזן שם פריט.",
+    "invalidQty": "כמות לא תקינה",
+    "invalidQtyMsg": "הכמות חייבת להיות לפחות 1.",
+    "couldNotSave": "לא ניתן לשמור את הפריט."
+  },
+  "history": {
+    "title": "היסטוריה",
+    "empty": "אין היסטוריה עדיין",
+    "emptySub": "פעולות ההוספה והמחיקה שלך יופיעו כאן.",
+    "added": "נוסף",
+    "deleted": "הוסר",
+    "updated": "עודכן",
+    "today": "היום",
+    "yesterday": "אתמול"
+  },
+  "profile": {
+    "title": "פרופיל",
+    "signedIn": "מחובר",
+    "shoppingList": "רשימת קניות",
+    "totalItems": "סה\"כ פריטים",
+    "app": "אפליקציה",
+    "locationTracking": "מעקב מיקום",
+    "notifications": "התראות חנויות",
+    "active": "פעיל",
+    "on": "פועל",
+    "version": "גרסה",
+    "language": "שפה",
+    "signOutConfirm": "האם אתה בטוח שברצונך להתנתק?"
+  },
+  "stores": {
+    "supermarket": "סופרמרקט",
+    "hardware": "חנות כלי עבודה",
+    "pharmacy": "בית מרקחת",
+    "general": "חנות כללית"
+  }
+}
