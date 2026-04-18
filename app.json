@@ -59,6 +59,9 @@
     "web": {
       "publicPath": "/remind-me/"
     },
+    "experiments": {
+      "baseUrl": "/remind-me/"
+    },
     "extra": {
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
