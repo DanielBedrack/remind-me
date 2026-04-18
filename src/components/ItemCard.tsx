@@ -15,19 +15,20 @@ interface Props {
 }
 
 export default function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollect }: Props) {
-  const accent  = STORE_COLORS[item.storeType] ?? C.accent;
-  const emoji   = productEmoji(item.name);
-  const checkScale = useRef(new Animated.Value(1)).current;
+  const accent    = STORE_COLORS[item.storeType] ?? C.accent;
+  const emoji     = productEmoji(item.name);
+  const cardScale = useRef(new Animated.Value(1)).current;
+  const cardOpacity = useRef(new Animated.Value(1)).current;
 
   function handleCollect() {
-    Animated.sequence([
-      Animated.spring(checkScale, { toValue: 1.3, useNativeDriver: true, speed: 50 }),
-      Animated.spring(checkScale, { toValue: 0,   useNativeDriver: true, speed: 30 }),
+    Animated.parallel([
+      Animated.spring(cardScale,   { toValue: 0.7, useNativeDriver: true, speed: 20 }),
+      Animated.timing(cardOpacity, { toValue: 0,   useNativeDriver: true, duration: 300 }),
     ]).start(() => onCollect(item.id));
   }
 
   return (
-    <View style={[styles.card, { borderColor: accent + '33' }]}>
+    <Animated.View style={[styles.card, { borderColor: accent + '33', transform: [{ scale: cardScale }], opacity: cardOpacity }]}>
 
       {/* Top-right delete */}
       <TouchableOpacity
@@ -76,14 +77,12 @@ export default function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollec
       </View>
 
       {/* Collect button */}
-      <Animated.View style={{ transform: [{ scale: checkScale }], width: '100%', marginTop: 10 }}>
-        <TouchableOpacity style={[styles.collectBtn, { borderColor: C.success + '60' }]} onPress={handleCollect} activeOpacity={0.8}>
-          <MaterialCommunityIcons name="check-circle-outline" size={16} color={C.success} />
-          <Text style={styles.collectTxt}>Collected</Text>
-        </TouchableOpacity>
-      </Animated.View>
+      <TouchableOpacity style={[styles.collectBtn, { borderColor: C.success + '60' }]} onPress={handleCollect} activeOpacity={0.8}>
+        <MaterialCommunityIcons name="check-circle-outline" size={16} color={C.success} />
+        <Text style={styles.collectTxt}>Collect</Text>
+      </TouchableOpacity>
 
-    </View>
+    </Animated.View>
   );
 }
 
@@ -95,7 +94,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 14,
     margin: 8,
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
   deleteBtn: {
     position: 'absolute', top: 10, right: 10,
