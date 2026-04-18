@@ -28,15 +28,13 @@ import {
 } from 'firebase/firestore';
 import { ShoppingItem } from '../types';
 
-const ENV = process.env as Record<string, string | undefined>;
-
 const firebaseConfig = {
-  apiKey:            ENV.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain:        ENV.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId:         ENV.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket:     ENV.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: ENV.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             ENV.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey:            'AIzaSyBzjrK15_fET0P_AoMqVXksBu7CNNY4AMA',
+  authDomain:        'remindme-3cc2a.firebaseapp.com',
+  projectId:         'remindme-3cc2a',
+  storageBucket:     'remindme-3cc2a.firebasestorage.app',
+  messagingSenderId: '607894688652',
+  appId:             '1:607894688652:web:873b59da27ebf0e651fca9',
 };
 
 const app  = initializeApp(firebaseConfig);
