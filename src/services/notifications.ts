@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
+import { ShoppingItem, StoreType } from '../types';
 
 if (Platform.OS !== 'web') {
   import('expo-notifications').then((Notifications) => {
@@ -21,12 +21,10 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
-
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
-
   if (finalStatus !== 'granted') return false;
 
   if (Platform.OS === 'android') {
@@ -37,24 +35,63 @@ export async function requestNotificationPermissions(): Promise<boolean> {
       lightColor: '#4A90E2',
     });
   }
-
   return true;
 }
 
-export async function sendStoreNotification(
-  item: ShoppingItem,
-  storeName: string
+type TimeOfDay = 'morning' | 'afternoon' | 'evening';
+
+function getTimeOfDay(): TimeOfDay {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return 'morning';
+  if (h >= 12 && h < 18) return 'afternoon';
+  return 'evening';
+}
+
+function buildNotification(
+  storeName: string,
+  items: ShoppingItem[],
+  distanceM: number,
+  priority: 'medium' | 'high'
+): { title: string; body: string } {
+  const tod    = getTimeOfDay();
+  const names  = items.map((i) => i.quantity > 1 ? `${i.name} ×${i.quantity}` : i.name).join(', ');
+  const dist   = distanceM < 1000 ? `${Math.round(distanceM)}m` : `${(distanceM / 1000).toFixed(1)}km`;
+
+  const emojis: Record<TimeOfDay, string> = { morning: '🌅', afternoon: '🛒', evening: '⚡' };
+  const emoji = priority === 'high' ? '⚡' : emojis[tod];
+
+  const title =
+    tod === 'morning'   ? `${emoji} Morning reminder — ${storeName}` :
+    tod === 'afternoon' ? `${emoji} ${storeName} is nearby!` :
+    `${emoji} Don't forget — ${storeName}`;
+
+  const body = `${names} · ${dist} away`;
+
+  return { title, body };
+}
+
+export async function sendBundledNotification(
+  storeName: string,
+  storeType: StoreType,
+  items: ShoppingItem[],
+  distanceM: number,
+  priority: 'medium' | 'high'
 ): Promise<void> {
   if (Platform.OS === 'web') return;
   const Notifications = await import('expo-notifications');
-  const storeLabel = STORE_TYPE_LABELS[item.storeType];
+  const { title, body } = buildNotification(storeName, items, distanceM, priority);
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: `🛒 Nearby ${storeLabel}!`,
-      body: `Don't forget: ${item.name} (×${item.quantity}) — ${storeName} is nearby.`,
-      data: { itemId: item.id },
+      title,
+      body,
+      data: { storeType },
       ...(Platform.OS === 'android' && { channelId: 'store-reminders' }),
     },
     trigger: null,
   });
+}
+
+// Keep old single-item version for any callers that haven't migrated
+export async function sendStoreNotification(item: ShoppingItem, storeName: string): Promise<void> {
+  return sendBundledNotification(storeName, item.storeType, [item], 0, 'medium');
 }

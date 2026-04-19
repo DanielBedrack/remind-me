@@ -8,7 +8,7 @@ import { Alert, AppState, AppStateStatus, View, ActivityIndicator } from 'react-
 
 import DashboardScreen from './src/screens/DashboardScreen';
 import ListScreen from './src/screens/ListScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
+import MapScreen from './src/screens/MapScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AddItemScreen from './src/screens/AddItemScreen';
 import AuthScreen from './src/screens/AuthScreen';
@@ -54,7 +54,7 @@ function MainTabs() {
       <Tab.Screen name="Home"    component={DashboardScreen} options={{ title: 'RemindMe' }} />
       <Tab.Screen name="List"    component={ListScreen}      options={{ title: 'My List' }} />
       <Tab.Screen name="Add"     component={ListScreen}      options={{ title: '' }} />
-      <Tab.Screen name="History" component={HistoryScreen}   options={{ title: 'History' }} />
+      <Tab.Screen name="Map"     component={MapScreen}       options={{ title: 'Map' }} />
       <Tab.Screen name="Profile" component={ProfileScreen}   options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );

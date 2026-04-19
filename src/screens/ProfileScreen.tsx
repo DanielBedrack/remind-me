@@ -7,6 +7,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useItemsContext } from '../context/ItemsContext';
+import { useHistory } from '../hooks/useHistory';
+import { productEmoji } from '../theme';
 import { useLanguage, Language } from '../context/LanguageContext';
 import { signOut } from '../services/firebase';
 import { useCurrentLocation } from '../hooks/useCurrentLocation';
@@ -43,6 +45,8 @@ export default function ProfileScreen() {
   const initials = email.slice(0, 2).toUpperCase();
 
   const { usingGps, setUsingGps } = useCurrentLocation();
+  const { entries, loading: histLoading } = useHistory();
+  const [histExpanded, setHistExpanded] = useState(false);
 
   const [profile,  setProfile]  = useState<UserProfile | null>(null);
   const [editing,  setEditing]  = useState(false);
@@ -396,6 +400,46 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {/* ── History ──────────────────────────────────────────────────────── */}
+      <TouchableOpacity style={styles.sectionHeaderRow} onPress={() => setHistExpanded((v) => !v)} activeOpacity={0.7}>
+        <Text style={[styles.sectionLabel, { marginTop: 28 }]}>History</Text>
+        <MaterialCommunityIcons
+          name={histExpanded ? 'chevron-up' : 'chevron-down'}
+          size={18} color={C.textTertiary}
+          style={{ marginTop: 26 }}
+        />
+      </TouchableOpacity>
+
+      {histExpanded && (
+        <View style={styles.settingsCard}>
+          {histLoading ? (
+            <View style={{ padding: 20, alignItems: 'center' }}><ActivityIndicator color={C.accent} /></View>
+          ) : entries.length === 0 ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: C.textSecondary, fontSize: 14 }}>No history yet.</Text>
+            </View>
+          ) : (
+            entries.slice(0, 30).map((entry) => {
+              const ACTION_COLOR = { added: C.success, deleted: C.danger, updated: C.warning, collected: '#34C759' };
+              const ACTION_ICON  = { added: 'plus-circle', deleted: 'minus-circle', updated: 'pencil-circle', collected: 'check-circle' };
+              const color = ACTION_COLOR[entry.action];
+              return (
+                <View key={entry.id} style={styles.histRow}>
+                  <MaterialCommunityIcons name={ACTION_ICON[entry.action] as any} size={18} color={color} />
+                  <Text style={styles.histName}>{productEmoji(entry.itemName)} {entry.itemName}</Text>
+                  <View style={[styles.histPill, { backgroundColor: STORE_COLORS[entry.storeType] + '22' }]}>
+                    <Text style={[styles.histPillTxt, { color: STORE_COLORS[entry.storeType] }]}>{STORE_TYPE_LABELS[entry.storeType]}</Text>
+                  </View>
+                  <Text style={styles.histTime}>
+                    {new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
+
       {/* Language selector */}
       <Text style={[styles.sectionLabel, { marginTop: 28 }]}>{t('profile.language')}</Text>
       <View style={styles.settingsCard}>
@@ -533,4 +577,10 @@ const styles = StyleSheet.create({
 
   signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderColor: C.danger + '50', borderRadius: 16, paddingVertical: 14, marginTop: 8 },
   signOutTxt: { fontSize: 15, fontWeight: '700', color: C.danger },
+
+  histRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
+  histName:    { flex: 1, fontSize: 13, color: C.textPrimary, fontWeight: '600' },
+  histPill:    { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  histPillTxt: { fontSize: 10, fontWeight: '700' },
+  histTime:    { fontSize: 11, color: C.textTertiary },
 });

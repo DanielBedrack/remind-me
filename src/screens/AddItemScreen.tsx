@@ -11,28 +11,59 @@ import type { RootStackParamList } from '../../App';
 const STORE_TYPES: StoreType[] = ['supermarket', 'hardware', 'pharmacy', 'general'];
 
 const COMMON_PRODUCTS: Record<StoreType, string[]> = {
-  supermarket: ['Milk','Bread','Eggs','Butter','Cheese','Yogurt','Chicken','Rice','Pasta','Tomatoes','Onions','Apples','Bananas','Orange Juice','Coffee','Sugar'],
-  hardware:    ['Screws','Nails','Paint','Drill Bits','Sandpaper','Light Bulbs','Duct Tape','WD-40','Cable Ties','Wall Plugs','Extension Cord','Paintbrush'],
-  pharmacy:    ['Aspirin','Bandages','Vitamins','Sunscreen','Ibuprofen','Cough Syrup','Hand Sanitizer','Thermometer','Eye Drops','Antacid','Allergy Pills'],
-  general:     ['Trash Bags','Cleaning Spray','Paper Towels','Toilet Paper','Dish Soap','Laundry Detergent','Sponges','Candles','Zip Bags','Aluminum Foil'],
+  supermarket: ['Milk','Bread','Eggs','Butter','Cheese','Yogurt','Chicken','Rice','Pasta','Hummus','Pita','Tomatoes','Onions','Apples','Coffee','Sugar'],
+  hardware:    ['Screws','Nails','Paint','Drill Bits','Sandpaper','Light Bulbs','Duct Tape','WD-40','Paintbrush','Wall Plugs','Extension Cord','LED Bulbs'],
+  pharmacy:    ['Aspirin','Bandages','Vitamins','Sunscreen','Ibuprofen','Shampoo','Toothpaste','Deodorant','Hand Sanitizer','Eye Drops','Baby Wipes','Moisturizer'],
+  general:     ['Lighter','Notebook','Pens','Scissors','Phone Charger','Hangers','Tape','Batteries','Sponges','Candles'],
 };
 
 const ALL_PRODUCTS = Array.from(new Set([
+  // Supermarket — food & household cleaning (all Israeli supermarkets carry these)
   ...COMMON_PRODUCTS.supermarket,
   'Beef','Fish','Garlic','Potatoes','Carrots','Strawberries','Grapes','Tea','Salt','Olive Oil','Flour','Cereal','Chocolate','Frozen Pizza','Ice Cream','Cucumber','Avocado','Lemon','Lettuce','Spinach','Mushrooms','Bell Peppers','Broccoli','Corn','Tuna','Salmon','Shrimp','Bacon','Sausage','Ham','Turkey','Ketchup','Mustard','Mayonnaise','Soy Sauce','Honey','Jam','Peanut Butter','Chips','Crackers','Cookies','Water','Sparkling Water','Soda','Beer','Wine','Juice','Oats','Granola','Nuts',
+  'Tahini','Labaneh','Feta','Pita Bread','Halva','Dates','Pomegranate','Burekas','Cottage Cheese','Shakshuka Sauce',
+  'Trash Bags','Paper Towels','Toilet Paper','Dish Soap','Laundry Detergent','Cleaning Spray','Aluminum Foil','Plastic Wrap','Baking Paper','Fabric Softener','Bleach','Window Cleaner','Floor Cleaner','Air Freshener','Rubber Gloves','Mop','Broom','Matches','Zip Bags',
+  // Hardware — tools, construction, electrical
   ...COMMON_PRODUCTS.hardware,
-  'Primer','LED Bulbs','Electrical Tape','Roller Brush','Measuring Tape','Hammer','Screwdriver','Wrench','Pliers','Utility Knife','Work Gloves','Ladder','Caulk','Plywood','Faucet','Hinges','Door Handle','Lock','Batteries','Smoke Detector','Wire','Saw','Spray Paint','Wood Glue','Zip Ties',
+  'Primer','Electrical Tape','Roller Brush','Measuring Tape','Hammer','Screwdriver','Wrench','Pliers','Utility Knife','Work Gloves','Ladder','Caulk','Plywood','Faucet','Hinges','Door Handle','Lock','Smoke Detector','Wire','Saw','Spray Paint','Wood Glue','Zip Ties','Cable Ties',
+  // Pharmacy — medicine & personal care
   ...COMMON_PRODUCTS.pharmacy,
-  'Vitamin C','Vitamin D','Paracetamol','Antihistamine','Nasal Spray','Lip Balm','Moisturizer','Shampoo','Conditioner','Body Wash','Soap','Toothbrush','Toothpaste','Floss','Mouthwash','Deodorant','Razor','Cotton Balls','Q-Tips','Baby Wipes','Diapers','Heating Pad','Ice Pack',
+  'Vitamin C','Vitamin D','Paracetamol','Antihistamine','Nasal Spray','Lip Balm','Conditioner','Body Wash','Soap','Toothbrush','Floss','Mouthwash','Razor','Cotton Balls','Q-Tips','Diapers','Heating Pad','Ice Pack','Cough Syrup','Thermometer','Antacid','Allergy Pills',
+  // General — convenience & stationery
   ...COMMON_PRODUCTS.general,
-  'Fabric Softener','Plastic Wrap','Baking Paper','Matches','Lighter','Air Freshener','Mop','Broom','Bleach','Window Cleaner','Floor Cleaner','Rubber Gloves','Tape','Notebook','Pens','Scissors','Phone Charger','Hangers',
+  'Lighter','Notebook','Pens','Scissors','Phone Charger','Hangers',
 ]));
 
+// Auto-assign store type when a product is selected from suggestions
+const PRODUCT_STORE_TYPE: Partial<Record<string, StoreType>> = {
+  // Hardware
+  screws:'hardware', nails:'hardware', paint:'hardware', 'drill bits':'hardware',
+  sandpaper:'hardware', 'light bulbs':'hardware', 'led bulbs':'hardware', 'duct tape':'hardware',
+  'wd-40':'hardware', 'cable ties':'hardware', 'wall plugs':'hardware', 'extension cord':'hardware',
+  paintbrush:'hardware', primer:'hardware', 'electrical tape':'hardware', 'roller brush':'hardware',
+  'measuring tape':'hardware', hammer:'hardware', screwdriver:'hardware', wrench:'hardware',
+  pliers:'hardware', 'utility knife':'hardware', 'work gloves':'hardware', ladder:'hardware',
+  caulk:'hardware', plywood:'hardware', faucet:'hardware', hinges:'hardware',
+  'door handle':'hardware', lock:'hardware', 'smoke detector':'hardware', wire:'hardware',
+  saw:'hardware', 'spray paint':'hardware', 'wood glue':'hardware', 'zip ties':'hardware',
+  // Pharmacy
+  aspirin:'pharmacy', bandages:'pharmacy', vitamins:'pharmacy', sunscreen:'pharmacy',
+  ibuprofen:'pharmacy', 'cough syrup':'pharmacy', 'hand sanitizer':'pharmacy',
+  thermometer:'pharmacy', 'eye drops':'pharmacy', antacid:'pharmacy', 'allergy pills':'pharmacy',
+  'vitamin c':'pharmacy', 'vitamin d':'pharmacy', paracetamol:'pharmacy', antihistamine:'pharmacy',
+  'nasal spray':'pharmacy', 'lip balm':'pharmacy', moisturizer:'pharmacy', shampoo:'pharmacy',
+  conditioner:'pharmacy', 'body wash':'pharmacy', soap:'pharmacy', toothbrush:'pharmacy',
+  toothpaste:'pharmacy', floss:'pharmacy', mouthwash:'pharmacy', deodorant:'pharmacy',
+  razor:'pharmacy', 'cotton balls':'pharmacy', 'q-tips':'pharmacy', 'baby wipes':'pharmacy',
+  diapers:'pharmacy', 'heating pad':'pharmacy', 'ice pack':'pharmacy',
+};
+
+// Israeli retail chains (ranked by price / availability)
 const DEMO_STORE_NAMES: Record<StoreType, string[]> = {
-  supermarket: ['Walmart','Costco','Whole Foods','Kroger','Safeway','Aldi','Lidl','Target','Publix','Sprouts'],
-  hardware:    ['Home Depot','Ace Hardware','Menards','True Value','Harbor Freight'],
-  pharmacy:    ['CVS','Walgreens','Rite Aid','Duane Reade','Bartell Drugs'],
-  general:     ['Dollar General','Dollar Tree','Family Dollar','7-Eleven','Circle K','Wawa'],
+  supermarket: ['Shufersal','Rami Levy','Victory','Yohananof','Carrefour','AM:PM'],
+  hardware:    ['ACE Hardware','Home Center','Tambour','Kfar HaShisha'],
+  pharmacy:    ['Super-Pharm','Be','Leumit Pharm','Newpharm'],
+  general:     ['AM:PM','Tiv Taam','Osher Ad','Kravitz'],
 };
 
 const GOOGLE_KEY = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? '';
@@ -190,7 +221,11 @@ export default function AddItemScreen({ onAdd, onUpdate }: Props) {
                 <TouchableOpacity
                   key={p}
                   style={styles.sugRow}
-                  onPress={() => { setName(p); setProductSuggestions([]); }}
+                  onPress={() => {
+                    setName(p); setProductSuggestions([]);
+                    const t = PRODUCT_STORE_TYPE[p.toLowerCase()];
+                    if (t) { setStoreType(t); setStoreName(''); setSuggestions([]); }
+                  }}
                 >
                   <Text style={styles.sugTxt}>{productEmoji(p)}  {p}</Text>
                 </TouchableOpacity>

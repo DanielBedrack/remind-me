@@ -1,17 +1,18 @@
 import React, { useRef } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Animated, Platform } from 'react-native';
+
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { C } from '../theme';
 
-type IconName = 'home' | 'home-outline' | 'format-list-bulleted' | 'format-list-bulleted-square' | 'history' | 'account' | 'account-outline' | 'plus';
+type IconName = 'home' | 'home-outline' | 'format-list-bulleted' | 'format-list-bulleted-square' | 'map-outline' | 'map' | 'account' | 'account-outline' | 'plus';
 
 const TAB_CONFIG: Record<string, { icon: IconName; activeIcon: IconName; label: string }> = {
   Home:    { icon: 'home-outline',                   activeIcon: 'home',                       label: 'Home'    },
   List:    { icon: 'format-list-bulleted',            activeIcon: 'format-list-bulleted-square', label: 'List'    },
   Add:     { icon: 'plus',                            activeIcon: 'plus',                        label: ''        },
-  History: { icon: 'history',                         activeIcon: 'history',                     label: 'History' },
+  Map:     { icon: 'map-outline',                     activeIcon: 'map',                         label: 'Map'     },
   Profile: { icon: 'account-outline',                 activeIcon: 'account',                     label: 'Profile' },
 };
 
@@ -20,10 +21,10 @@ export default function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const fabScale = useRef(new Animated.Value(1)).current;
 
   function onFabPressIn() {
-    Animated.spring(fabScale, { toValue: 0.88, useNativeDriver: true, speed: 50 }).start();
+    Animated.spring(fabScale, { toValue: 0.88, useNativeDriver: Platform.OS !== 'web', speed: 50 }).start();
   }
   function onFabPressOut() {
-    Animated.spring(fabScale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
+    Animated.spring(fabScale, { toValue: 1, useNativeDriver: Platform.OS !== 'web', speed: 30 }).start();
   }
 
   return (

@@ -1,51 +1,99 @@
 import { Platform } from 'react-native';
-import { ShoppingItem } from '../types';
-import { findNearbyStores } from './places';
-import { sendStoreNotification } from './notifications';
+import { ShoppingItem, StoreType } from '../types';
+import { findNearbyStores, haversineDistanceMeters } from './places';
+import { sendBundledNotification } from './notifications';
 
 export const LOCATION_TASK_NAME = 'background-location-task';
 
-const NOTIF_STATE_KEY = 'notif_state_v2';
+const NOTIF_STATE_KEY  = 'notif_state_v3';
+const DAILY_COUNT_KEY  = 'notif_daily_count';
+const MAX_PER_DAY      = 2;
+const MIN_GAP_MS       = 4 * 60 * 60 * 1000; // 4 hours
 
-interface ItemNotifState {
-  insideRadius: boolean;
-  lastPlaceId: string | null;
+const CRITICAL_ITEMS = new Set([
+  'milk', 'bread', 'eggs', 'aspirin', 'ibuprofen', 'paracetamol', 'bandages',
+  'חלב', 'לחם', 'ביצים', 'אספירין', 'איבופרופן', 'פרצטמול', 'תחבושות',
+]);
+
+interface StoreNotifState {
+  insidePlaceId: string | null;
   notifiedAt: number;
 }
 
-async function getAsyncStorage() {
+interface DailyCount {
+  date: string; // YYYY-MM-DD
+  count: number;
+  lastNotifAt: number;
+}
+
+async function getAS() {
   const mod = await import('@react-native-async-storage/async-storage');
   return mod.default;
 }
 
-async function loadNotifState(): Promise<Record<string, ItemNotifState>> {
+async function loadNotifState(): Promise<Record<string, StoreNotifState>> {
   try {
-    const AS = await getAsyncStorage();
+    const AS = await getAS();
     const raw = await AS.getItem(NOTIF_STATE_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+  } catch { return {}; }
 }
 
-async function saveNotifState(state: Record<string, ItemNotifState>): Promise<void> {
-  const AS = await getAsyncStorage();
-  await AS.setItem(NOTIF_STATE_KEY, JSON.stringify(state));
+async function saveNotifState(state: Record<string, StoreNotifState>): Promise<void> {
+  try {
+    const AS = await getAS();
+    await AS.setItem(NOTIF_STATE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+async function loadDailyCount(): Promise<DailyCount> {
+  try {
+    const AS = await getAS();
+    const raw = await AS.getItem(DAILY_COUNT_KEY);
+    if (raw) {
+      const d: DailyCount = JSON.parse(raw);
+      const today = new Date().toISOString().slice(0, 10);
+      if (d.date === today) return d;
+    }
+  } catch {}
+  return { date: new Date().toISOString().slice(0, 10), count: 0, lastNotifAt: 0 };
+}
+
+async function saveDailyCount(d: DailyCount): Promise<void> {
+  try {
+    const AS = await getAS();
+    await AS.setItem(DAILY_COUNT_KEY, JSON.stringify(d));
+  } catch {}
+}
+
+function isCritical(item: ShoppingItem): boolean {
+  return CRITICAL_ITEMS.has(item.name.toLowerCase().trim());
+}
+
+async function getUserRadius(): Promise<number> {
+  try {
+    const AS = await getAS();
+    const raw = await AS.getItem('user_radius');
+    return raw ? parseInt(raw, 10) : 300;
+  } catch { return 300; }
 }
 
 export async function checkNearbyStoresAndNotify(
   latitude: number,
   longitude: number
 ): Promise<void> {
-  const AS = await getAsyncStorage();
+  const AS = await getAS();
   const raw = await AS.getItem('shopping_items');
   if (!raw) return;
   const items: ShoppingItem[] = JSON.parse(raw);
   if (!items.length) return;
 
+  const userRadius = await getUserRadius();
+  const daily = await loadDailyCount();
   const state = await loadNotifState();
 
-  const byType = new Map<string, ShoppingItem[]>();
+  const now = Date.now();
+  const byType = new Map<StoreType, ShoppingItem[]>();
   for (const item of items) {
     const list = byType.get(item.storeType) ?? [];
     list.push(item);
@@ -53,56 +101,68 @@ export async function checkNearbyStoresAndNotify(
   }
 
   let stateChanged = false;
+  let dailyChanged = false;
 
   for (const [storeType, typeItems] of byType) {
-    const stores = await findNearbyStores(
-      latitude,
-      longitude,
-      storeType as ShoppingItem['storeType'],
-      300
-    );
+    const stores = await findNearbyStores(latitude, longitude, storeType, userRadius);
+    const nearest = stores[0] ?? null;
 
-    const nearestPlaceId = stores[0]?.placeId ?? null;
-    const nearestName = stores[0]?.name ?? '';
-
-    for (const item of typeItems) {
-      const prev: ItemNotifState = state[item.id] ?? {
-        insideRadius: false,
-        lastPlaceId: null,
-        notifiedAt: 0,
-      };
-
-      if (nearestPlaceId === null) {
-        if (prev.insideRadius) {
-          state[item.id] = { insideRadius: false, lastPlaceId: null, notifiedAt: prev.notifiedAt };
-          stateChanged = true;
-        }
-        continue;
-      }
-
-      const isNewEntry = !prev.insideRadius;
-      const isDifferentStore = prev.lastPlaceId !== nearestPlaceId;
-
-      if (isNewEntry || isDifferentStore) {
-        await sendStoreNotification(item, nearestName);
-        state[item.id] = {
-          insideRadius: true,
-          lastPlaceId: nearestPlaceId,
-          notifiedAt: Date.now(),
-        };
+    if (!nearest) {
+      // Mark store type as outside radius
+      const key = storeType as string;
+      if (state[key]?.insidePlaceId) {
+        state[key] = { insidePlaceId: null, notifiedAt: state[key].notifiedAt };
         stateChanged = true;
       }
+      continue;
     }
+
+    const distanceM = haversineDistanceMeters(latitude, longitude, nearest.lat, nearest.lng);
+
+    // Radius-aware strictness: >800m needs ≥3 items
+    if (distanceM > 800 && typeItems.length < 3) continue;
+
+    const key = storeType;
+    const prev: StoreNotifState = state[key] ?? { insidePlaceId: null, notifiedAt: 0 };
+    const isNewEntry      = prev.insidePlaceId !== nearest.placeId;
+
+    if (!isNewEntry) continue; // already notified for this store
+
+    // Determine which items qualify
+    const criticalItems = typeItems.filter(isCritical);
+    const allItems      = typeItems;
+
+    const hasCritical = criticalItems.length > 0;
+    const hasEnough   = allItems.length >= 2;
+
+    if (!hasCritical && !hasEnough) continue;
+
+    // Anti-spam (critical items bypass daily limit but still respect 4h gap)
+    const gapOk = (now - daily.lastNotifAt) >= MIN_GAP_MS || daily.lastNotifAt === 0;
+    if (!gapOk) continue;
+    if (!hasCritical && daily.count >= MAX_PER_DAY) continue;
+
+    const priority: 'high' | 'medium' = hasCritical || distanceM < 200 ? 'high' : 'medium';
+    const itemsToSend = hasCritical && !hasEnough ? criticalItems : allItems;
+
+    await sendBundledNotification(nearest.name, storeType, itemsToSend, distanceM, priority);
+
+    state[key] = { insidePlaceId: nearest.placeId, notifiedAt: now };
+    stateChanged = true;
+
+    daily.count += 1;
+    daily.lastNotifAt = now;
+    dailyChanged = true;
   }
 
-  for (const itemId of Object.keys(state)) {
-    if (!items.find((i) => i.id === itemId)) {
-      delete state[itemId];
-      stateChanged = true;
-    }
+  // Clean up stale keys
+  const activeTypes = new Set(items.map((i) => i.storeType as string));
+  for (const key of Object.keys(state)) {
+    if (!activeTypes.has(key)) { delete state[key]; stateChanged = true; }
   }
 
   if (stateChanged) await saveNotifState(state);
+  if (dailyChanged) await saveDailyCount(daily);
 }
 
 export async function runForegroundCheck(): Promise<void> {
@@ -132,7 +192,6 @@ export async function startLocationTracking(): Promise<void> {
   const already = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
   if (already) return;
 
-  // Define the task right before starting (safe on native, never runs on web)
   if (!TaskManager.isTaskDefined(LOCATION_TASK_NAME)) {
     TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
       if (error) return;
@@ -152,7 +211,7 @@ export async function startLocationTracking(): Promise<void> {
     distanceInterval: 100,
     deferredUpdatesInterval: 90_000,
     deferredUpdatesDistance: 100,
-    pausesLocationsUpdatesAutomatically: true,
+    pausesUpdatesAutomatically: true,
     activityType: Location.ActivityType.OtherNavigation,
     showsBackgroundLocationIndicator: true,
     foregroundService: {

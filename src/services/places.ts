@@ -1,4 +1,4 @@
-import { NearbyStore, StoreType, STORE_TYPE_PRIMARY, STORE_TYPE_KEYWORDS, STORE_TYPE_PLACE_TYPES } from '../types';
+import { NearbyStore, StoreType } from '../types';
 
 // ─── Address autocomplete (OpenStreetMap Nominatim — free, no key) ────────────
 
@@ -96,14 +96,38 @@ export async function searchAddress(query: string, countryCode?: string, city?: 
 
 // ─── OpenStreetMap Overpass API (free, no key required) ─────────────────────
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+// Multiple mirrors — tried in order until one succeeds (all CORS-enabled)
+const OVERPASS_ENDPOINTS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+];
 
 const OVERPASS_TAGS: Record<StoreType, Array<[string, string]>> = {
-  supermarket: [['shop', 'supermarket'], ['shop', 'grocery'], ['shop', 'food']],
-  hardware:    [['shop', 'hardware'], ['shop', 'doityourself'], ['shop', 'tools']],
-  pharmacy:    [['amenity', 'pharmacy'], ['shop', 'pharmacy'], ['shop', 'chemist']],
-  general:     [['shop', 'convenience'], ['shop', 'general'], ['shop', 'variety_store']],
+  supermarket: [['shop', 'supermarket'], ['shop', 'grocery']],
+  hardware:    [['shop', 'hardware'], ['shop', 'doityourself'], ['shop', 'paint'], ['shop', 'building_materials']],
+  pharmacy:    [['amenity', 'pharmacy'], ['shop', 'chemist']],
+  general:     [['shop', 'convenience'], ['shop', 'general']],
 };
+
+// Reverse tag lookup for classifying combined-query results
+const _TAG_TO_TYPE = new Map<string, StoreType>();
+for (const [type, tags] of Object.entries(OVERPASS_TAGS) as [StoreType, Array<[string,string]>][]) {
+  for (const [k, v] of tags) _TAG_TO_TYPE.set(`${k}=${v}`, type);
+}
+
+function classifyTags(tags: Record<string, string>): StoreType | null {
+  for (const [k, v] of Object.entries(tags)) {
+    const t = _TAG_TO_TYPE.get(`${k}=${v}`);
+    if (t) return t;
+  }
+  return null;
+}
+
+// Cache: key = "lat,lng,type,radius" (rounded to ~100m)
+const _overpassCache = new Map<string, NearbyStore[]>();
+const _combinedCache = new Map<string, Map<StoreType, NearbyStore[]>>();
 
 export async function findNearbyStores(
   lat: number,
@@ -111,7 +135,67 @@ export async function findNearbyStores(
   storeType: StoreType,
   radiusMeters = 300
 ): Promise<NearbyStore[]> {
-  return findNearbyStoresOverpass(lat, lng, storeType, radiusMeters);
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${storeType},${radiusMeters}`;
+  if (_overpassCache.has(key)) return _overpassCache.get(key)!;
+  const result = await findNearbyStoresOverpass(lat, lng, storeType, radiusMeters);
+  if (result.length > 0) _overpassCache.set(key, result);
+  return result;
+}
+
+/** Single Overpass call for ALL store types — use this in the map to avoid 4× calls. */
+export async function findAllNearbyStores(
+  lat: number,
+  lng: number,
+  storeTypes: StoreType[],
+  radiusMeters = 800
+): Promise<Map<StoreType, NearbyStore[]>> {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)},${storeTypes.sort().join(',')},${radiusMeters}`;
+  if (_combinedCache.has(key)) return _combinedCache.get(key)!;
+
+  const deg  = radiusMeters / 111_000;
+  const bbox = `${lat - deg},${lng - deg * 1.3},${lat + deg},${lng + deg * 1.3}`;
+  const allTags = storeTypes.flatMap((t) => OVERPASS_TAGS[t]);
+  const union   = allTags.map(([k, v]) => `node["${k}"="${v}"](${bbox});`).join('');
+  const query   = `[out:json][timeout:20];(${union});out body;`;
+
+  const data = await overpassFetch(query);
+  const result = new Map<StoreType, NearbyStore[]>(storeTypes.map((t) => [t, []]));
+
+  if (data?.elements?.length) {
+    for (const el of data.elements as any[]) {
+      if (el.lat == null) continue;
+      const t     = el.tags ?? {};
+      const type  = classifyTags(t);
+      if (!type || !result.has(type)) continue;
+      const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
+      result.get(type)!.push({
+        placeId:  `osm-${el.id}`,
+        name:     t.name ?? t['name:en'] ?? t['brand'] ?? 'Unnamed Store',
+        vicinity: street || t['addr:city'] || '',
+        lat: el.lat, lng: el.lon,
+        types: [type],
+      });
+    }
+  }
+
+  _combinedCache.set(key, result);
+  return result;
+}
+
+async function overpassFetch(query: string): Promise<any> {
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+        signal: AbortSignal.timeout(14000),
+      });
+      if (!res.ok) continue;
+      return await res.json();
+    } catch { /* try next mirror */ }
+  }
+  return null;
 }
 
 async function findNearbyStoresOverpass(
@@ -121,68 +205,33 @@ async function findNearbyStoresOverpass(
   radiusMeters: number
 ): Promise<NearbyStore[]> {
   const tags = OVERPASS_TAGS[storeType];
-  const nodeUnion = tags.map(([k, v]) => `node["${k}"="${v}"](around:${radiusMeters},${lat},${lng});`).join('');
-  const wayUnion  = tags.map(([k, v]) => `way["${k}"="${v}"](around:${radiusMeters},${lat},${lng});`).join('');
-  const query = `[out:json][timeout:10];(${nodeUnion}${wayUnion});out center;`;
+  // Bounding box is faster than around: on the server side
+  const deg  = radiusMeters / 111_000;
+  const bbox = `${lat - deg},${lng - deg * 1.3},${lat + deg},${lng + deg * 1.3}`;
+  const union = tags.map(([k, v]) => `node["${k}"="${v}"](${bbox});`).join('');
+  const query = `[out:json][timeout:20];(${union});out body;`;
 
-  try {
-    const res = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(query),
-    });
-    const data = await res.json();
-    if (!data.elements?.length) return [];
+  const data = await overpassFetch(query);
+  if (!data?.elements?.length) return [];
 
-    return (data.elements as any[]).map((el) => {
-      const elLat = el.lat ?? el.center?.lat ?? lat;
-      const elLng = el.lon ?? el.center?.lon ?? lng;
-      const tags  = el.tags ?? {};
-      const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ');
+  return (data.elements as any[])
+    .filter((el) => (el.lat ?? el.center?.lat) != null)
+    .map((el) => {
+      const t      = el.tags ?? {};
+      const elLat  = el.lat ?? el.center?.lat;
+      const elLng  = el.lon ?? el.center?.lon;
+      const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
       return {
         placeId:  `osm-${el.id}`,
-        name:     tags.name ?? tags['name:en'] ?? tags['brand'] ?? 'Unnamed Store',
-        vicinity: street || tags['addr:city'] || '',
+        name:     t.name ?? t['name:en'] ?? t['brand'] ?? 'Unnamed Store',
+        vicinity: street || t['addr:city'] || '',
         lat:      elLat,
         lng:      elLng,
         types:    [storeType],
       };
     });
-  } catch {
-    return [];
-  }
 }
 
-// ─── Google Places fallback (requires EXPO_PUBLIC_GOOGLE_PLACES_API_KEY) ─────
-// To enable: replace findNearbyStoresOverpass with findNearbyStoresGoogle below.
-
-const _GOOGLE_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
-
-interface _GooglePlace {
-  place_id: string; name: string; vicinity: string;
-  types: string[]; geometry: { location: { lat: number; lng: number } };
-}
-
-async function findNearbyStoresGoogle(
-  lat: number, lng: number, storeType: StoreType, radiusMeters: number
-): Promise<NearbyStore[]> {
-  const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
-  if (!key) return [];
-  const url =
-    `${_GOOGLE_URL}?location=${lat},${lng}` +
-    `&radius=${radiusMeters}` +
-    `&type=${encodeURIComponent(STORE_TYPE_PRIMARY[storeType])}` +
-    `&keyword=${encodeURIComponent(STORE_TYPE_KEYWORDS[storeType])}` +
-    `&key=${key}`;
-  try {
-    const res  = await fetch(url);
-    const data = await res.json();
-    if (data.status !== 'OK' || !data.results?.length) return [];
-    return (data.results as _GooglePlace[])
-      .filter((p) => p.types?.some((t) => STORE_TYPE_PLACE_TYPES[storeType].includes(t)))
-      .map((p) => ({ placeId: p.place_id, name: p.name, vicinity: p.vicinity, lat: p.geometry.location.lat, lng: p.geometry.location.lng, types: p.types }));
-  } catch { return []; }
-}
 
 export function haversineDistanceMeters(
   lat1: number,
