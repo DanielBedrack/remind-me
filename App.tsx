@@ -22,6 +22,7 @@ import { startLocationTracking, runForegroundCheck } from './src/services/locati
 import { fetchProfile } from './src/services/userProfile';
 import { C } from './src/theme';
 import { LanguageProvider } from './src/context/LanguageContext';
+import { LocationProvider } from './src/context/LocationContext';
 import { ShoppingItem } from './src/types';
 
 export type RootStackParamList = {
@@ -104,6 +105,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
+    <LocationProvider>
     <ItemsContext.Provider value={ctxValue}>
       <NavigationContainer theme={NavTheme}>
         <StatusBar style="light" />
@@ -159,6 +161,7 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </ItemsContext.Provider>
+    </LocationProvider>
     </LanguageProvider>
   );
 }

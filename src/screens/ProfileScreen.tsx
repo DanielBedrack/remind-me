@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator,
+  TextInput, ActivityIndicator, Switch,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useItemsContext } from '../context/ItemsContext';
 import { useLanguage, Language } from '../context/LanguageContext';
 import { signOut } from '../services/firebase';
+import { useCurrentLocation } from '../hooks/useCurrentLocation';
 import { fetchProfile, saveProfile, UserProfile } from '../services/userProfile';
 import { searchAddress, searchCountries, AddressSuggestion, CountrySuggestion } from '../services/places';
 import { C, STORE_COLORS } from '../theme';
@@ -40,6 +41,8 @@ export default function ProfileScreen() {
   const { items } = useItemsContext();
   const email    = user?.email ?? 'Anonymous';
   const initials = email.slice(0, 2).toUpperCase();
+
+  const { usingGps, setUsingGps } = useCurrentLocation();
 
   const [profile,  setProfile]  = useState<UserProfile | null>(null);
   const [editing,  setEditing]  = useState(false);
@@ -411,7 +414,19 @@ export default function ProfileScreen() {
       {/* App settings */}
       <Text style={styles.sectionLabel}>{t('profile.app')}</Text>
       <View style={styles.settingsCard}>
-        <SettingRow icon="map-marker-outline"  label={t('profile.locationTracking')} value={t('profile.active')} valueColor={C.success} />
+        <View style={styles.settingRow}>
+          <MaterialCommunityIcons name="map-marker-outline" size={20} color={C.textSecondary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.settingLabel}>{t('profile.locationTracking')}</Text>
+            <Text style={styles.settingSubLabel}>{usingGps ? 'Using device GPS' : 'Using IP address'}</Text>
+          </View>
+          <Switch
+            value={usingGps}
+            onValueChange={setUsingGps}
+            trackColor={{ false: C.cardBorder, true: C.accent + '80' }}
+            thumbColor={usingGps ? C.accent : C.textTertiary}
+          />
+        </View>
         <View style={styles.divider} />
         <SettingRow icon="bell-outline"         label={t('profile.notifications')}    value={t('profile.on')}     valueColor={C.success} />
         <View style={styles.divider} />
@@ -471,7 +486,8 @@ const styles = StyleSheet.create({
 
   settingsCard: { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.cardBorder, overflow: 'hidden', marginBottom: 8 },
   settingRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  settingLabel: { flex: 1, fontSize: 15, color: C.textPrimary },
+  settingLabel: { fontSize: 15, color: C.textPrimary },
+  settingSubLabel: { fontSize: 11, color: C.textTertiary, marginTop: 1 },
   settingValue: { fontSize: 13, color: C.textSecondary, fontWeight: '600', maxWidth: 160, textAlign: 'right' },
   divider:      { height: 1, backgroundColor: C.cardBorder, marginLeft: 52 },
 

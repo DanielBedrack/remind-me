@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemsContext } from '../context/ItemsContext';
 import { useAuth } from '../hooks/useAuth';
+import { useCurrentLocation } from '../hooks/useCurrentLocation';
 import { C, STORE_COLORS, productEmoji } from '../theme';
 import type { RootStackParamList } from '../../App';
 import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
@@ -17,6 +18,8 @@ export default function DashboardScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { items, collect, updateQuantity, remove } = useItemsContext();
   const { user } = useAuth();
+
+  const { city, street, lat, lng, source, loading: locLoading, refresh: refreshLoc } = useCurrentLocation();
 
   const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null);
   const [localQty, setLocalQty]         = useState(1);
@@ -71,19 +74,33 @@ export default function DashboardScreen() {
 
       {/* ── Location card ──────────────────────────── */}
       <View style={styles.locationCard}>
-        <View style={styles.locationBadge}>
-          <Text style={styles.locationBadgeTxt}>DEMO</Text>
+        <View style={styles.locationCardTop}>
+          <View style={[styles.locationBadge, lat ? styles.locationBadgeLive : styles.locationBadgeOff]}>
+            <Text style={styles.locationBadgeTxt}>{locLoading ? 'LOCATING…' : lat ? 'LIVE' : 'NO GPS'}</Text>
+          </View>
+          <TouchableOpacity onPress={refreshLoc} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialCommunityIcons name="refresh" size={16} color={C.textTertiary} />
+          </TouchableOpacity>
         </View>
         <View style={styles.locationRow}>
           <MaterialCommunityIcons name="map-marker" size={20} color={C.accent} />
-          <Text style={styles.locationTxt}>Tel Aviv, Israel</Text>
+          <Text style={styles.locationTxt}>
+            {locLoading ? 'Getting location…' : city ?? (lat ? `${lat.toFixed(4)}, ${lng?.toFixed(4)}` : 'Location unavailable')}
+          </Text>
+          {!!street && <Text style={styles.locationStreet}>{street}</Text>}
         </View>
-        <Text style={styles.locationSub}>Simulated location · Nearby stores active</Text>
+        <Text style={styles.locationSub}>
+          {lat
+            ? source === 'gps'
+              ? `${lat.toFixed(5)}, ${lng?.toFixed(5)} · GPS`
+              : 'Approximate location · Scanning nearby stores'
+            : 'Enable location to scan nearby stores'}
+        </Text>
         <View style={styles.locationDots}>
-          {['supermarket', 'pharmacy', 'hardware'].map((t) => (
+          {(['supermarket', 'pharmacy', 'hardware', 'general'] as const).map((t) => (
             <View key={t} style={[styles.storeDot, { backgroundColor: STORE_COLORS[t] }]} />
           ))}
-          <Text style={styles.locationDotsTxt}>3 store types tracked</Text>
+          <Text style={styles.locationDotsTxt}>4 store types tracked</Text>
         </View>
       </View>
 
@@ -230,10 +247,14 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
-  locationBadge: { alignSelf: 'flex-start', backgroundColor: C.accentSoft, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 10 },
+  locationCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  locationBadge:     { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: C.accentSoft },
+  locationBadgeLive: { backgroundColor: C.accentSoft },
+  locationBadgeOff:  { backgroundColor: C.cardBorder },
   locationBadgeTxt: { fontSize: 10, fontWeight: '800', color: C.accent, letterSpacing: 1 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  locationTxt: { fontSize: 17, fontWeight: '700', color: C.textPrimary },
+  locationTxt:    { fontSize: 17, fontWeight: '700', color: C.textPrimary },
+  locationStreet: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
   locationSub: { fontSize: 13, color: C.textSecondary, marginBottom: 12 },
   locationDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   storeDot:    { width: 8, height: 8, borderRadius: 4 },
