@@ -113,16 +113,26 @@ export default function AuthScreen() {
   // ─── Email / Password ──────────────────────────────────────────────────────
   async function handleEmail() {
     if (!email.trim() || !password) { Alert.alert('Missing fields', 'Please enter your email and password.'); return; }
+    if (mode === 'register' && password.length < 6) { Alert.alert('Weak password', 'Password must be at least 6 characters.'); return; }
     setLoading('email');
     try {
       if (mode === 'signin') {
         await signInEmail(email.trim(), password);
       } else {
-        if (password.length < 6) { Alert.alert('Weak password', 'Password must be at least 6 characters.'); return; }
         await registerEmail(email.trim(), password);
       }
     } catch (e: unknown) {
-      Alert.alert(mode === 'signin' ? 'Sign-in failed' : 'Registration failed', e instanceof Error ? e.message : String(e));
+      const code = (e as any)?.code ?? '';
+      const msg =
+        code === 'auth/email-already-in-use'  ? 'An account with this email already exists. Try signing in.' :
+        code === 'auth/user-not-found'        ? 'No account found with this email.' :
+        code === 'auth/wrong-password'        ? 'Incorrect password. Please try again.' :
+        code === 'auth/invalid-email'         ? 'Please enter a valid email address.' :
+        code === 'auth/too-many-requests'     ? 'Too many attempts. Please wait a moment and try again.' :
+        code === 'auth/network-request-failed'? 'Network error. Check your internet connection.' :
+        code === 'auth/invalid-credential'    ? 'Invalid email or password.' :
+        e instanceof Error ? e.message : String(e);
+      Alert.alert(mode === 'signin' ? 'Sign-in failed' : 'Registration failed', msg);
     } finally { setLoading(null); }
   }
 

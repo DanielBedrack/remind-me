@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,6 +12,21 @@ import { ShoppingItem } from '../types';
 export default function ListScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { items, loading, remove, updateQuantity, collect } = useItemsContext();
+
+  const handleEdit    = useCallback((item: ShoppingItem) => nav.navigate('AddItem', { editItem: item }), [nav]);
+  const handleDelete  = useCallback((id: string) => remove(id), [remove]);
+  const handleQty     = useCallback((id: string, qty: number) => updateQuantity(id, qty), [updateQuantity]);
+  const handleCollect = useCallback((id: string) => collect(id), [collect]);
+
+  const renderItem = useCallback(({ item }: { item: ShoppingItem }) => (
+    <ItemCard
+      item={item}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+      onQtyChange={handleQty}
+      onCollect={handleCollect}
+    />
+  ), [handleEdit, handleDelete, handleQty, handleCollect]);
 
   if (loading) {
     return (
@@ -29,15 +44,11 @@ export default function ListScreen() {
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={items.length === 0 ? styles.emptyContainer : styles.list}
-        renderItem={({ item }: { item: ShoppingItem }) => (
-          <ItemCard
-            item={item}
-            onEdit={(i) => nav.navigate('AddItem', { editItem: i })}
-            onDelete={remove}
-            onQtyChange={updateQuantity}
-            onCollect={collect}
-          />
-        )}
+        renderItem={renderItem}
+        removeClippedSubviews
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        initialNumToRender={10}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🛒</Text>

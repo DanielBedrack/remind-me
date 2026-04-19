@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, Platform } from 'react-native';
+import { fireConfetti } from '../utils/confetti';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
 import { C, STORE_COLORS, productEmoji } from '../theme';
@@ -14,7 +15,7 @@ interface Props {
   onCollect:   (id: string) => void;
 }
 
-export default function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollect }: Props) {
+function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollect }: Props) {
   const accent    = STORE_COLORS[item.storeType] ?? C.accent;
   const emoji     = productEmoji(item.name);
   const cardScale = useRef(new Animated.Value(1)).current;
@@ -23,6 +24,7 @@ export default function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollec
   const nativeDriver = Platform.OS !== 'web';
 
   function handleCollect() {
+    fireConfetti();
     Animated.parallel([
       Animated.spring(cardScale,   { toValue: 0.7, useNativeDriver: nativeDriver, speed: 20 }),
       Animated.timing(cardOpacity, { toValue: 0,   useNativeDriver: nativeDriver, duration: 300 }),
@@ -130,3 +132,5 @@ const styles = StyleSheet.create({
   },
   collectTxt: { fontSize: 12, fontWeight: '700', color: C.success },
 });
+
+export default React.memo(ItemCard);

@@ -11,13 +11,22 @@ import type { RootStackParamList } from '../../App';
 const STORE_TYPES: StoreType[] = ['supermarket', 'hardware', 'pharmacy', 'general'];
 
 const COMMON_PRODUCTS: Record<StoreType, string[]> = {
-  supermarket: ['Milk','Bread','Eggs','Butter','Cheese','Yogurt','Chicken','Beef','Fish','Rice','Pasta','Tomatoes','Onions','Garlic','Potatoes','Carrots','Apples','Bananas','Strawberries','Grapes','Orange Juice','Coffee','Tea','Sugar','Salt','Olive Oil','Flour','Cereal','Chocolate','Frozen Pizza','Ice Cream','Sour Cream','Cream Cheese','Salad','Cucumber','Avocado','Lemon','Lettuce','Spinach','Mushrooms','Bell Peppers','Broccoli','Corn','Tuna','Salmon','Shrimp','Bacon','Sausage','Ham','Turkey','Ketchup','Mustard','Mayonnaise','Soy Sauce','Honey','Jam','Peanut Butter','Chips','Crackers','Cookies','Water','Sparkling Water','Soda','Beer','Wine','Juice','Yogurt Drink','Protein Bar','Oats','Granola','Nuts','Dried Fruit'],
-  hardware:    ['Screws','Nails','Paint','Primer','Drill Bits','Sandpaper','Light Bulbs','LED Bulbs','Duct Tape','Electrical Tape','WD-40','Cable Ties','Wall Plugs','Extension Cord','Paintbrush','Roller Brush','Measuring Tape','Level','Hammer','Screwdriver','Wrench','Pliers','Utility Knife','Safety Glasses','Work Gloves','Ladder','Caulk','Putty','Plywood','PVC Pipe','Faucet','Hinges','Door Handle','Lock','Batteries','Smoke Detector','Outlet Cover','Wire','Saw','Sandpaper','Spray Paint','Wood Glue','Epoxy','Velcro','Staples','Zip Ties'],
-  pharmacy:    ['Aspirin','Bandages','Vitamins','Vitamin C','Vitamin D','Sunscreen','Ibuprofen','Paracetamol','Cough Syrup','Hand Sanitizer','Thermometer','Eye Drops','Antacid','Allergy Pills','Antihistamine','Nasal Spray','Lip Balm','Moisturizer','Shampoo','Conditioner','Body Wash','Soap','Toothbrush','Toothpaste','Floss','Mouthwash','Deodorant','Razor','Shaving Cream','Cotton Balls','Q-Tips','Face Mask','Sleeping Pills','Melatonin','Protein Powder','Baby Wipes','Diapers','Baby Formula','Breast Pump','Heating Pad','Ice Pack','Compression Socks','Blood Pressure Monitor','Glucose Monitor'],
-  general:     ['Trash Bags','Cleaning Spray','Paper Towels','Toilet Paper','Dish Soap','Laundry Detergent','Fabric Softener','Sponges','Candles','Zip Bags','Aluminum Foil','Plastic Wrap','Baking Paper','Matches','Lighter','Air Freshener','Mop','Broom','Dustpan','Vacuum Bag','Bleach','Window Cleaner','Floor Cleaner','Rubber Gloves','Batteries','Tape','Envelopes','Notebook','Pens','Scissors','Umbrella','Sunglasses','Phone Charger','Earphones','Tote Bag','Hangers'],
+  supermarket: ['Milk','Bread','Eggs','Butter','Cheese','Yogurt','Chicken','Rice','Pasta','Tomatoes','Onions','Apples','Bananas','Orange Juice','Coffee','Sugar'],
+  hardware:    ['Screws','Nails','Paint','Drill Bits','Sandpaper','Light Bulbs','Duct Tape','WD-40','Cable Ties','Wall Plugs','Extension Cord','Paintbrush'],
+  pharmacy:    ['Aspirin','Bandages','Vitamins','Sunscreen','Ibuprofen','Cough Syrup','Hand Sanitizer','Thermometer','Eye Drops','Antacid','Allergy Pills'],
+  general:     ['Trash Bags','Cleaning Spray','Paper Towels','Toilet Paper','Dish Soap','Laundry Detergent','Sponges','Candles','Zip Bags','Aluminum Foil'],
 };
 
-const ALL_PRODUCTS = Array.from(new Set(Object.values(COMMON_PRODUCTS).flat()));
+const ALL_PRODUCTS = Array.from(new Set([
+  ...COMMON_PRODUCTS.supermarket,
+  'Beef','Fish','Garlic','Potatoes','Carrots','Strawberries','Grapes','Tea','Salt','Olive Oil','Flour','Cereal','Chocolate','Frozen Pizza','Ice Cream','Cucumber','Avocado','Lemon','Lettuce','Spinach','Mushrooms','Bell Peppers','Broccoli','Corn','Tuna','Salmon','Shrimp','Bacon','Sausage','Ham','Turkey','Ketchup','Mustard','Mayonnaise','Soy Sauce','Honey','Jam','Peanut Butter','Chips','Crackers','Cookies','Water','Sparkling Water','Soda','Beer','Wine','Juice','Oats','Granola','Nuts',
+  ...COMMON_PRODUCTS.hardware,
+  'Primer','LED Bulbs','Electrical Tape','Roller Brush','Measuring Tape','Hammer','Screwdriver','Wrench','Pliers','Utility Knife','Work Gloves','Ladder','Caulk','Plywood','Faucet','Hinges','Door Handle','Lock','Batteries','Smoke Detector','Wire','Saw','Spray Paint','Wood Glue','Zip Ties',
+  ...COMMON_PRODUCTS.pharmacy,
+  'Vitamin C','Vitamin D','Paracetamol','Antihistamine','Nasal Spray','Lip Balm','Moisturizer','Shampoo','Conditioner','Body Wash','Soap','Toothbrush','Toothpaste','Floss','Mouthwash','Deodorant','Razor','Cotton Balls','Q-Tips','Baby Wipes','Diapers','Heating Pad','Ice Pack',
+  ...COMMON_PRODUCTS.general,
+  'Fabric Softener','Plastic Wrap','Baking Paper','Matches','Lighter','Air Freshener','Mop','Broom','Bleach','Window Cleaner','Floor Cleaner','Rubber Gloves','Tape','Notebook','Pens','Scissors','Phone Charger','Hangers',
+]));
 
 const DEMO_STORE_NAMES: Record<StoreType, string[]> = {
   supermarket: ['Walmart','Costco','Whole Foods','Kroger','Safeway','Aldi','Lidl','Target','Publix','Sprouts'],

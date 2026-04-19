@@ -1,5 +1,99 @@
 import { NearbyStore, StoreType, STORE_TYPE_PRIMARY, STORE_TYPE_KEYWORDS, STORE_TYPE_PLACE_TYPES } from '../types';
 
+// ─── Address autocomplete (OpenStreetMap Nominatim — free, no key) ────────────
+
+export interface AddressSuggestion {
+  displayName: string;
+  lat: number;
+  lng: number;
+}
+
+export interface CountrySuggestion {
+  name: string;
+  code: string; // ISO 3166-1 alpha-2
+}
+
+// Curated list — covers most common cases; fallback to Nominatim for unknown queries
+const COUNTRIES: CountrySuggestion[] = [
+  { name: 'Israel', code: 'il' },
+  { name: 'United States', code: 'us' },
+  { name: 'United Kingdom', code: 'gb' },
+  { name: 'Germany', code: 'de' },
+  { name: 'France', code: 'fr' },
+  { name: 'Italy', code: 'it' },
+  { name: 'Spain', code: 'es' },
+  { name: 'Netherlands', code: 'nl' },
+  { name: 'Belgium', code: 'be' },
+  { name: 'Switzerland', code: 'ch' },
+  { name: 'Austria', code: 'at' },
+  { name: 'Sweden', code: 'se' },
+  { name: 'Norway', code: 'no' },
+  { name: 'Denmark', code: 'dk' },
+  { name: 'Finland', code: 'fi' },
+  { name: 'Poland', code: 'pl' },
+  { name: 'Russia', code: 'ru' },
+  { name: 'Ukraine', code: 'ua' },
+  { name: 'Turkey', code: 'tr' },
+  { name: 'Canada', code: 'ca' },
+  { name: 'Australia', code: 'au' },
+  { name: 'New Zealand', code: 'nz' },
+  { name: 'Japan', code: 'jp' },
+  { name: 'South Korea', code: 'kr' },
+  { name: 'China', code: 'cn' },
+  { name: 'India', code: 'in' },
+  { name: 'Brazil', code: 'br' },
+  { name: 'Argentina', code: 'ar' },
+  { name: 'Mexico', code: 'mx' },
+  { name: 'South Africa', code: 'za' },
+  { name: 'Egypt', code: 'eg' },
+  { name: 'Jordan', code: 'jo' },
+  { name: 'UAE', code: 'ae' },
+  { name: 'Saudi Arabia', code: 'sa' },
+  { name: 'Portugal', code: 'pt' },
+  { name: 'Greece', code: 'gr' },
+  { name: 'Czech Republic', code: 'cz' },
+  { name: 'Hungary', code: 'hu' },
+  { name: 'Romania', code: 'ro' },
+  { name: 'Singapore', code: 'sg' },
+];
+
+export function searchCountries(query: string): CountrySuggestion[] {
+  if (!query.trim()) return COUNTRIES.slice(0, 8);
+  const q = query.trim().toLowerCase();
+  return COUNTRIES.filter((c) => c.name.toLowerCase().startsWith(q) || c.name.toLowerCase().includes(q));
+}
+
+// Session-scoped cache — same query returns instantly on second call
+const _nominatimCache = new Map<string, AddressSuggestion[]>();
+
+async function nominatim(params: Record<string, string>, mapper: (r: { display_name: string; lat: string; lon: string }) => AddressSuggestion): Promise<AddressSuggestion[]> {
+  const key = JSON.stringify(params);
+  if (_nominatimCache.has(key)) return _nominatimCache.get(key)!;
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams(params);
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'RemindMe-App/1.0' } });
+    const data: Array<{ display_name: string; lat: string; lon: string }> = await res.json();
+    const results = data.map(mapper);
+    _nominatimCache.set(key, results);
+    return results;
+  } catch { return []; }
+}
+
+export async function searchCities(query: string, countryCode: string): Promise<AddressSuggestion[]> {
+  if (!query.trim() || query.trim().length < 2) return [];
+  const params: Record<string, string> = { q: query, format: 'json', limit: '6', featuretype: 'city' };
+  if (countryCode) params.countrycodes = countryCode;
+  return nominatim(params, (r) => ({ displayName: r.display_name.split(',')[0].trim(), lat: parseFloat(r.lat), lng: parseFloat(r.lon) }));
+}
+
+export async function searchAddress(query: string, countryCode?: string, city?: string): Promise<AddressSuggestion[]> {
+  if (!query.trim() || query.trim().length < 3) return [];
+  const q = city ? `${query}, ${city}` : query;
+  const params: Record<string, string> = { q, format: 'json', limit: '6', addressdetails: '1' };
+  if (countryCode) params.countrycodes = countryCode;
+  return nominatim(params, (r) => ({ displayName: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) }));
+}
+
 // ─── DEMO MODE ───────────────────────────────────────────────────────────────
 // Real Google Places calls are disabled to avoid API costs during the demo.
 // Set DEMO_MODE = false and fill in GOOGLE_PLACES_API_KEY to go live.

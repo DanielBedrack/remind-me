@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -56,7 +56,7 @@ export default function HistoryScreen() {
     );
   }
 
-  const groups = groupByDay(entries);
+  const groups = useMemo(() => groupByDay(entries), [entries]);
 
   return (
     <FlatList

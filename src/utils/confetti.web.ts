@@ -1,0 +1,1 @@
+export { fireConfetti } from './confetti';

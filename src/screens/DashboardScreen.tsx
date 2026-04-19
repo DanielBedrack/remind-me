@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform,
+  Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,18 +11,50 @@ import { useAuth } from '../hooks/useAuth';
 import { C, STORE_COLORS, productEmoji } from '../theme';
 import type { RootStackParamList } from '../../App';
 import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
+import { fireConfetti } from '../utils/confetti';
 
 export default function DashboardScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { items } = useItemsContext();
+  const { items, collect, updateQuantity, remove } = useItemsContext();
   const { user } = useAuth();
 
-  const recentItems = items.slice(0, 4);
-  const greeting = getGreeting();
-  const displayName = user?.email?.split('@')[0] ?? 'there';
+  const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null);
+  const [localQty, setLocalQty]         = useState(1);
+
+  const recentItems  = useMemo(() => items.slice(0, 4), [items]);
+  const greeting     = getGreeting();
+  const displayName  = useMemo(() => user?.email?.split('@')[0] ?? 'there', [user]);
+
+  function openPopup(item: ShoppingItem) {
+    setSelectedItem(item);
+    setLocalQty(item.quantity);
+  }
+
+  function closePopup() { setSelectedItem(null); }
+
+  function handleDelete() {
+    if (!selectedItem) return;
+    closePopup();
+    remove(selectedItem.id);
+  }
+
+  async function handleCollect() {
+    if (!selectedItem) return;
+    closePopup();
+    fireConfetti();
+    await collect(selectedItem.id);
+  }
+
+  async function handleQtyChange(delta: number) {
+    if (!selectedItem) return;
+    const next = Math.max(1, localQty + delta);
+    setLocalQty(next);
+    await updateQuantity(selectedItem.id, next);
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
       {/* ── Header ─────────────────────────────────── */}
       <View style={styles.header}>
@@ -78,7 +111,7 @@ export default function DashboardScreen() {
             <TouchableOpacity
               key={item.id}
               style={[styles.recentCard, { borderColor: STORE_COLORS[item.storeType] + '40' }]}
-              onPress={() => nav.navigate('AddItem', { editItem: item })}
+              onPress={() => openPopup(item)}
               activeOpacity={0.8}
             >
               <Text style={styles.recentEmoji}>{productEmoji(item.name)}</Text>
@@ -112,6 +145,63 @@ export default function DashboardScreen() {
       )}
 
     </ScrollView>
+
+    {/* ── Quick-action popup ─────────────────────── */}
+    <Modal visible={!!selectedItem} transparent animationType="fade" onRequestClose={closePopup}>
+      <TouchableWithoutFeedback onPress={closePopup}>
+        <View style={styles.backdrop}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.popup}>
+              {selectedItem && (
+                <>
+                  {/* Close X */}
+                  <TouchableOpacity style={styles.closeBtn} onPress={closePopup}>
+                    <MaterialCommunityIcons name="close" size={16} color={C.textSecondary} />
+                  </TouchableOpacity>
+
+                  {/* Item info */}
+                  <Text style={styles.popupEmoji}>{productEmoji(selectedItem.name)}</Text>
+                  <Text style={styles.popupName}>{selectedItem.name}</Text>
+                  <View style={[styles.popupStorePill, { backgroundColor: STORE_COLORS[selectedItem.storeType] + '20' }]}>
+                    <Text style={[styles.popupStoreTxt, { color: STORE_COLORS[selectedItem.storeType] }]}>
+                      {selectedItem.storeName || STORE_TYPE_LABELS[selectedItem.storeType]}
+                    </Text>
+                  </View>
+
+                  {/* Qty stepper */}
+                  <View style={styles.popupQtyRow}>
+                    <TouchableOpacity
+                      style={[styles.popupQtyBtn, localQty <= 1 && styles.popupQtyBtnDim]}
+                      onPress={() => handleQtyChange(-1)}
+                      disabled={localQty <= 1}
+                    >
+                      <Text style={styles.popupQtyBtnTxt}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.popupQtyNum}>{localQty}</Text>
+                    <TouchableOpacity style={styles.popupQtyBtn} onPress={() => handleQtyChange(1)}>
+                      <Text style={styles.popupQtyBtnTxt}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Collect */}
+                  <TouchableOpacity style={styles.popupCollectBtn} onPress={handleCollect} activeOpacity={0.8}>
+                    <MaterialCommunityIcons name="check-circle-outline" size={18} color="#fff" />
+                    <Text style={styles.popupCollectTxt}>Collect</Text>
+                  </TouchableOpacity>
+
+                  {/* Delete */}
+                  <TouchableOpacity style={styles.popupCancelBtn} onPress={handleDelete} activeOpacity={0.8}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={16} color={C.danger} />
+                    <Text style={styles.popupCancelTxt}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+    </View>
   );
 }
 
@@ -180,4 +270,22 @@ const styles = StyleSheet.create({
   summaryChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: C.cardBorder },
   summaryDot: { width: 8, height: 8, borderRadius: 4 },
   summaryTxt: { fontSize: 12, color: C.textSecondary, fontWeight: '600' },
+
+  // popup
+  backdrop:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
+  popup:          { width: 280, backgroundColor: C.card, borderRadius: 24, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: C.cardBorder },
+  closeBtn:       { position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 14, backgroundColor: C.cardBorder, alignItems: 'center', justifyContent: 'center' },
+  popupEmoji:     { fontSize: 52, marginBottom: 8, marginTop: 8 },
+  popupName:      { fontSize: 18, fontWeight: '800', color: C.textPrimary, textAlign: 'center', marginBottom: 6 },
+  popupStorePill: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 20 },
+  popupStoreTxt:  { fontSize: 12, fontWeight: '700' },
+  popupQtyRow:    { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+  popupQtyBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: C.cardBorder, alignItems: 'center', justifyContent: 'center' },
+  popupQtyBtnDim: { opacity: 0.3 },
+  popupQtyBtnTxt: { fontSize: 20, color: C.textPrimary, lineHeight: 24 },
+  popupQtyNum:    { fontSize: 22, fontWeight: '800', color: C.textPrimary, minWidth: 32, textAlign: 'center' },
+  popupCollectBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.success, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, marginBottom: 10, width: '100%', justifyContent: 'center' },
+  popupCollectTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  popupCancelBtn:  { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
+  popupCancelTxt:  { color: C.danger, fontWeight: '700', fontSize: 14 },
 });
