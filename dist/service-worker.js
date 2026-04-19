@@ -14,6 +14,7 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const { request } = e;
+  if (!request.url.startsWith('http')) return;
   const url = new URL(request.url);
 
   // Cache-first: JS bundles, fonts, images (all have hashed names — safe forever)

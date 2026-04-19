@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ShoppingItem, STORE_TYPE_LABELS } from '../types';
 import { C, STORE_COLORS, productEmoji } from '../theme';
@@ -20,10 +20,12 @@ export default function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollec
   const cardScale = useRef(new Animated.Value(1)).current;
   const cardOpacity = useRef(new Animated.Value(1)).current;
 
+  const nativeDriver = Platform.OS !== 'web';
+
   function handleCollect() {
     Animated.parallel([
-      Animated.spring(cardScale,   { toValue: 0.7, useNativeDriver: true, speed: 20 }),
-      Animated.timing(cardOpacity, { toValue: 0,   useNativeDriver: true, duration: 300 }),
+      Animated.spring(cardScale,   { toValue: 0.7, useNativeDriver: nativeDriver, speed: 20 }),
+      Animated.timing(cardOpacity, { toValue: 0,   useNativeDriver: nativeDriver, duration: 300 }),
     ]).start(() => onCollect(item.id));
   }
 

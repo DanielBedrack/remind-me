@@ -58,7 +58,7 @@ function MainTabs() {
 
 export default function App() {
   const { userId, ready } = useAuth();
-  const { items, loading, add, update, updateQuantity, remove } = useItems(userId);
+  const { items, loading, add, update, updateQuantity, remove, collect } = useItems(userId);
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
-    <ItemsContext.Provider value={{ items, loading, add, update, updateQuantity, remove }}>
+    <ItemsContext.Provider value={{ items, loading, add, update, updateQuantity, remove, collect }}>
       <NavigationContainer theme={NavTheme}>
         <StatusBar style="light" />
         <Stack.Navigator
