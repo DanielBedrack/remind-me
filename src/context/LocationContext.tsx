@@ -52,7 +52,9 @@ async function getIpLocation(): Promise<{ lat: number; lng: number; city: string
 }
 
 async function readGpsPref(): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
+  if (Platform.OS === 'web') {
+    return (localStorage.getItem(LOCATION_GPS_KEY) ?? 'true') === 'true';
+  }
   try {
     const AS  = await import('@react-native-async-storage/async-storage');
     const val = await AS.default.getItem(LOCATION_GPS_KEY);
@@ -61,11 +63,20 @@ async function readGpsPref(): Promise<boolean> {
 }
 
 async function writeGpsPref(val: boolean): Promise<void> {
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'web') {
+    localStorage.setItem(LOCATION_GPS_KEY, val ? 'true' : 'false');
+    return;
+  }
   try {
     const AS = await import('@react-native-async-storage/async-storage');
     await AS.default.setItem(LOCATION_GPS_KEY, val ? 'true' : 'false');
   } catch {}
+}
+
+function getBrowserPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true })
+  );
 }
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
@@ -99,19 +110,26 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
 
-      if (usingGps && Platform.OS !== 'web') {
+      if (usingGps) {
         try {
-          const Location = await import('expo-location');
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === 'granted') {
+          let latitude: number, longitude: number;
+          if (Platform.OS === 'web') {
+            const pos = await getBrowserPosition();
+            latitude = pos.coords.latitude;
+            longitude = pos.coords.longitude;
+          } else {
+            const Location = await import('expo-location');
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') throw new Error('denied');
             const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            if (cancelled) return;
-            const { latitude, longitude } = pos.coords;
-            setLat(latitude); setLng(longitude); setSource('gps');
-            const { city: name, street: rd } = await reverseGeocode(latitude, longitude);
-            if (!cancelled) { setCity(name); setStreet(rd); setLoading(false); }
-            return;
+            latitude = pos.coords.latitude;
+            longitude = pos.coords.longitude;
           }
+          if (cancelled) return;
+          setLat(latitude); setLng(longitude); setSource('gps');
+          const { city: name, street: rd } = await reverseGeocode(latitude, longitude);
+          if (!cancelled) { setCity(name); setStreet(rd); setLoading(false); }
+          return;
         } catch {}
         if (cancelled) return;
       }
