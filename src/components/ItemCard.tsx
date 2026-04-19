@@ -25,10 +25,11 @@ function ItemCard({ item, onEdit, onDelete, onQtyChange, onCollect }: Props) {
 
   function handleCollect() {
     fireConfetti();
+    onCollect(item.id);                      // fire immediately — don't gate on animation
     Animated.parallel([
       Animated.spring(cardScale,   { toValue: 0.7, useNativeDriver: nativeDriver, speed: 20 }),
       Animated.timing(cardOpacity, { toValue: 0,   useNativeDriver: nativeDriver, duration: 300 }),
-    ]).start(() => onCollect(item.id));
+    ]).start();
   }
 
   return (

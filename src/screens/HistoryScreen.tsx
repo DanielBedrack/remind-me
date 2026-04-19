@@ -42,6 +42,9 @@ export default function HistoryScreen() {
 
   useFocusEffect(React.useCallback(() => { reload(); }, [reload]));
 
+  // Must be before any early return — hooks must run in the same order every render
+  const groups = useMemo(() => groupByDay(entries), [entries]);
+
   if (loading) {
     return <View style={styles.centered}><ActivityIndicator size="large" color={C.accent} /></View>;
   }
@@ -55,8 +58,6 @@ export default function HistoryScreen() {
       </View>
     );
   }
-
-  const groups = useMemo(() => groupByDay(entries), [entries]);
 
   return (
     <FlatList

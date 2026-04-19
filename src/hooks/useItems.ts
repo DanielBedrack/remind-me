@@ -55,12 +55,13 @@ export function useItems(userId: string | null) {
   const remove = useCallback(async (itemId: string) => {
     const item = itemsRef.current.find((i) => i.id === itemId);
     await removeItem(itemId);
-    if (item) await logHistory({ action: 'deleted', itemName: item.name, storeType: item.storeType, storeName: item.storeName, qty: item.quantity });
+    if (item) logHistory({ action: 'deleted', itemName: item.name, storeType: item.storeType, storeName: item.storeName, qty: item.quantity }).catch(() => {});
   }, []);
 
   const collect = useCallback(async (itemId: string) => {
     const item = itemsRef.current.find((i) => i.id === itemId);
-    if (item) await logHistory({ action: 'collected', itemName: item.name, storeType: item.storeType, storeName: item.storeName, qty: item.quantity });
+    // Fire history in background — never block removal on AsyncStorage
+    if (item) logHistory({ action: 'collected', itemName: item.name, storeType: item.storeType, storeName: item.storeName, qty: item.quantity }).catch(() => {});
     await removeItem(itemId);
   }, []);
 
