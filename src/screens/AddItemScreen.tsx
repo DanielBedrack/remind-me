@@ -11,11 +11,13 @@ import type { RootStackParamList } from '../../App';
 const STORE_TYPES: StoreType[] = ['supermarket', 'hardware', 'pharmacy', 'general'];
 
 const COMMON_PRODUCTS: Record<StoreType, string[]> = {
-  supermarket: ['Milk','Bread','Eggs','Butter','Cheese','Yogurt','Chicken','Rice','Pasta','Tomatoes','Onions','Apples','Bananas','Orange Juice','Coffee','Sugar'],
-  hardware:    ['Screws','Nails','Paint','Drill Bits','Sandpaper','Light Bulbs','Duct Tape','WD-40','Cable Ties','Wall Plugs','Extension Cord','Paintbrush'],
-  pharmacy:    ['Aspirin','Bandages','Vitamins','Sunscreen','Ibuprofen','Cough Syrup','Hand Sanitizer','Thermometer','Eye Drops','Antacid','Allergy Pills'],
-  general:     ['Trash Bags','Cleaning Spray','Paper Towels','Toilet Paper','Dish Soap','Laundry Detergent','Sponges','Candles','Zip Bags','Aluminum Foil'],
+  supermarket: ['Milk','Bread','Eggs','Butter','Cheese','Yogurt','Chicken','Beef','Fish','Rice','Pasta','Tomatoes','Onions','Garlic','Potatoes','Carrots','Apples','Bananas','Strawberries','Grapes','Orange Juice','Coffee','Tea','Sugar','Salt','Olive Oil','Flour','Cereal','Chocolate','Frozen Pizza','Ice Cream','Sour Cream','Cream Cheese','Salad','Cucumber','Avocado','Lemon','Lettuce','Spinach','Mushrooms','Bell Peppers','Broccoli','Corn','Tuna','Salmon','Shrimp','Bacon','Sausage','Ham','Turkey','Ketchup','Mustard','Mayonnaise','Soy Sauce','Honey','Jam','Peanut Butter','Chips','Crackers','Cookies','Water','Sparkling Water','Soda','Beer','Wine','Juice','Yogurt Drink','Protein Bar','Oats','Granola','Nuts','Dried Fruit'],
+  hardware:    ['Screws','Nails','Paint','Primer','Drill Bits','Sandpaper','Light Bulbs','LED Bulbs','Duct Tape','Electrical Tape','WD-40','Cable Ties','Wall Plugs','Extension Cord','Paintbrush','Roller Brush','Measuring Tape','Level','Hammer','Screwdriver','Wrench','Pliers','Utility Knife','Safety Glasses','Work Gloves','Ladder','Caulk','Putty','Plywood','PVC Pipe','Faucet','Hinges','Door Handle','Lock','Batteries','Smoke Detector','Outlet Cover','Wire','Saw','Sandpaper','Spray Paint','Wood Glue','Epoxy','Velcro','Staples','Zip Ties'],
+  pharmacy:    ['Aspirin','Bandages','Vitamins','Vitamin C','Vitamin D','Sunscreen','Ibuprofen','Paracetamol','Cough Syrup','Hand Sanitizer','Thermometer','Eye Drops','Antacid','Allergy Pills','Antihistamine','Nasal Spray','Lip Balm','Moisturizer','Shampoo','Conditioner','Body Wash','Soap','Toothbrush','Toothpaste','Floss','Mouthwash','Deodorant','Razor','Shaving Cream','Cotton Balls','Q-Tips','Face Mask','Sleeping Pills','Melatonin','Protein Powder','Baby Wipes','Diapers','Baby Formula','Breast Pump','Heating Pad','Ice Pack','Compression Socks','Blood Pressure Monitor','Glucose Monitor'],
+  general:     ['Trash Bags','Cleaning Spray','Paper Towels','Toilet Paper','Dish Soap','Laundry Detergent','Fabric Softener','Sponges','Candles','Zip Bags','Aluminum Foil','Plastic Wrap','Baking Paper','Matches','Lighter','Air Freshener','Mop','Broom','Dustpan','Vacuum Bag','Bleach','Window Cleaner','Floor Cleaner','Rubber Gloves','Batteries','Tape','Envelopes','Notebook','Pens','Scissors','Umbrella','Sunglasses','Phone Charger','Earphones','Tote Bag','Hangers'],
 };
+
+const ALL_PRODUCTS = Array.from(new Set(Object.values(COMMON_PRODUCTS).flat()));
 
 const DEMO_STORE_NAMES: Record<StoreType, string[]> = {
   supermarket: ['Walmart','Costco','Whole Foods','Kroger','Safeway','Aldi','Lidl','Target','Publix','Sprouts'],
@@ -55,13 +57,28 @@ export default function AddItemScreen({ onAdd, onUpdate }: Props) {
   const [quantity,    setQuantity]    = useState(String(editItem?.quantity ?? 1));
   const [storeType,   setStoreType]   = useState<StoreType>(editItem?.storeType ?? 'supermarket');
   const [storeName,   setStoreName]   = useState(editItem?.storeName ?? '');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [saving,      setSaving]      = useState(false);
-  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [suggestions,        setSuggestions]        = useState<string[]>([]);
+  const [productSuggestions, setProductSuggestions] = useState<string[]>([]);
+  const [saving,             setSaving]             = useState(false);
+  const debounce    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nameDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accent = STORE_COLORS[storeType];
 
   function handleTypeChange(type: StoreType) {
-    setStoreType(type); setName(''); setStoreName(''); setSuggestions([]);
+    setStoreType(type); setName(''); setStoreName(''); setSuggestions([]); setProductSuggestions([]);
+  }
+
+  function handleNameChange(text: string) {
+    setName(text);
+    if (nameDebounce.current) clearTimeout(nameDebounce.current);
+    if (!text.trim()) { setProductSuggestions([]); return; }
+    nameDebounce.current = setTimeout(() => {
+      const q = text.trim().toLowerCase();
+      const matches = ALL_PRODUCTS
+        .filter((p) => p.toLowerCase().includes(q) && p.toLowerCase() !== q)
+        .slice(0, 6);
+      setProductSuggestions(matches);
+    }, 150);
   }
 
   function handleStoreNameChange(text: string) {
@@ -149,7 +166,29 @@ export default function AddItemScreen({ onAdd, onUpdate }: Props) {
         </View>
 
         <Text style={styles.label}>Item Name</Text>
-        <TextInput style={styles.input} placeholder="Or type a custom item..." placeholderTextColor={C.textSecondary} value={name} onChangeText={setName} returnKeyType="next" />
+        <View style={{ zIndex: 9 }}>
+          <TextInput
+            style={styles.input}
+            placeholder="Or type a custom item..."
+            placeholderTextColor={C.textSecondary}
+            value={name}
+            onChangeText={handleNameChange}
+            returnKeyType="next"
+          />
+          {productSuggestions.length > 0 && (
+            <View style={styles.dropdown}>
+              {productSuggestions.map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  style={styles.sugRow}
+                  onPress={() => { setName(p); setProductSuggestions([]); }}
+                >
+                  <Text style={styles.sugTxt}>{productEmoji(p)}  {p}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
         <Text style={styles.label}>Quantity</Text>
         <View style={styles.qtyRow}>
