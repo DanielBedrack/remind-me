@@ -42,13 +42,31 @@ async function reverseGeocode(lat: number, lng: number): Promise<{ city: string 
 }
 
 async function getIpLocation(): Promise<{ lat: number; lng: number; city: string } | null> {
-  try {
-    // ipapi.co works from both browser and native (CORS-enabled, free, no key)
-    const res  = await fetch('https://ipapi.co/json/');
-    const data = await res.json();
-    if (!data.latitude || data.error) return null;
-    return { lat: data.latitude, lng: data.longitude, city: data.city ?? data.region ?? 'Unknown' };
-  } catch { return null; }
+  // Try multiple providers in order — all CORS-enabled, no key required
+  const providers = [
+    async () => {
+      const res  = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+      const d    = await res.json();
+      if (!d.latitude || d.error) return null;
+      return { lat: d.latitude as number, lng: d.longitude as number, city: (d.city ?? d.region ?? 'Unknown') as string };
+    },
+    async () => {
+      const res  = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(5000) });
+      const d    = await res.json();
+      if (!d.success || !d.latitude) return null;
+      return { lat: d.latitude as number, lng: d.longitude as number, city: (d.city ?? d.region ?? 'Unknown') as string };
+    },
+    async () => {
+      const res  = await fetch('https://freeipapi.com/api/json', { signal: AbortSignal.timeout(5000) });
+      const d    = await res.json();
+      if (!d.latitude) return null;
+      return { lat: d.latitude as number, lng: d.longitude as number, city: (d.cityName ?? d.regionName ?? 'Unknown') as string };
+    },
+  ];
+  for (const fn of providers) {
+    try { const r = await fn(); if (r) return r; } catch {}
+  }
+  return null;
 }
 
 async function readGpsPref(): Promise<boolean> {
@@ -75,7 +93,11 @@ async function writeGpsPref(val: boolean): Promise<void> {
 
 function getBrowserPosition(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) =>
-    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true })
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      timeout: 15000,
+      enableHighAccuracy: false, // faster and more reliable on mobile
+      maximumAge: 60000,         // accept a cached fix up to 1 min old
+    })
   );
 }
 
@@ -85,7 +107,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [lat,      setLat]      = useState<number | null>(null);
   const [lng,      setLng]      = useState<number | null>(null);
   const [source,   setSource]   = useState<'gps' | 'ip' | null>(null);
-  const [loading,  setLoading]  = useState(false);
+  const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [usingGps, setUsingGpsState] = useState(true);
   const [tick,     setTick]     = useState(0);
