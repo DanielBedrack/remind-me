@@ -108,15 +108,16 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 // ─── Firestore ────────────────────────────────────────────────────────────────
 
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
 export async function addItem(
   userId: string,
   item: Omit<ShoppingItem, 'id' | 'userId' | 'createdAt'>
 ): Promise<string> {
-  const ref = await withTimeout(
-    addDoc(collection(db, 'items'), { ...item, userId, createdAt: Date.now() }),
-    8000,
-    'addItem'
-  );
+  const data = stripUndefined({ ...item, userId, createdAt: Date.now() });
+  const ref = await withTimeout(addDoc(collection(db, 'items'), data), 8000, 'addItem');
   return ref.id;
 }
 
@@ -125,7 +126,7 @@ export async function updateItem(
   updates: Partial<Pick<ShoppingItem, 'name' | 'quantity' | 'storeType' | 'storeName'>>
 ): Promise<void> {
   await withTimeout(
-    updateDoc(doc(db, 'items', itemId), updates),
+    updateDoc(doc(db, 'items', itemId), stripUndefined(updates as Record<string, unknown>)),
     8000,
     'updateItem'
   );
