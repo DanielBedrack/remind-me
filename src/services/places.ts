@@ -129,6 +129,45 @@ function classifyTags(tags: Record<string, string>): StoreType | null {
 const _overpassCache = new Map<string, NearbyStore[]>();
 const _combinedCache = new Map<string, Map<StoreType, NearbyStore[]>>();
 
+// ─── Nominatim POI fallback (no key, CORS-safe, reliable) ───────────────────
+
+const _NOMINATIM_AMENITY: Partial<Record<StoreType, string>> = {
+  supermarket: 'supermarket',
+  pharmacy:    'pharmacy',
+};
+const _NOMINATIM_QUERY: Record<StoreType, string> = {
+  supermarket: 'supermarket',
+  hardware:    'hardware store',
+  pharmacy:    'pharmacy',
+  general:     'convenience store',
+};
+
+async function findNearbyStoresNominatim(
+  lat: number, lng: number, storeType: StoreType, radiusMeters: number
+): Promise<NearbyStore[]> {
+  try {
+    const deg    = radiusMeters / 111_000;
+    const vb     = `${lng - deg * 1.3},${lat - deg},${lng + deg * 1.3},${lat + deg}`;
+    const amenity = _NOMINATIM_AMENITY[storeType];
+    const url = amenity
+      ? `https://nominatim.openstreetmap.org/search?amenity=${amenity}&format=json&limit=10&viewbox=${vb}&bounded=1`
+      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(_NOMINATIM_QUERY[storeType])}&format=json&limit=10&viewbox=${vb}&bounded=1`;
+    const res  = await fetch(url, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'RemindMe-App/1.0' },
+      signal: AbortSignal.timeout(6000),
+    });
+    const data: any[] = await res.json();
+    return data.map((el) => ({
+      placeId:  `nom-${el.place_id}`,
+      name:     el.display_name.split(',')[0].trim(),
+      vicinity: el.display_name.split(',').slice(1, 3).join(', ').trim(),
+      lat:      parseFloat(el.lat),
+      lng:      parseFloat(el.lon),
+      types:    [storeType],
+    }));
+  } catch { return []; }
+}
+
 export async function findNearbyStores(
   lat: number,
   lng: number,
@@ -137,7 +176,8 @@ export async function findNearbyStores(
 ): Promise<NearbyStore[]> {
   const key = `${lat.toFixed(3)},${lng.toFixed(3)},${storeType},${radiusMeters}`;
   if (_overpassCache.has(key)) return _overpassCache.get(key)!;
-  const result = await findNearbyStoresOverpass(lat, lng, storeType, radiusMeters);
+  let result = await findNearbyStoresOverpass(lat, lng, storeType, radiusMeters);
+  if (!result.length) result = await findNearbyStoresNominatim(lat, lng, storeType, radiusMeters);
   if (result.length > 0) _overpassCache.set(key, result);
   return result;
 }
@@ -177,6 +217,14 @@ export async function findAllNearbyStores(
       });
     }
   }
+
+  // Nominatim fallback for any type that got zero results from Overpass
+  await Promise.all(storeTypes.map(async (t) => {
+    if (result.get(t)!.length === 0) {
+      const fallback = await findNearbyStoresNominatim(lat, lng, t, radiusMeters);
+      if (fallback.length) result.set(t, fallback);
+    }
+  }));
 
   _combinedCache.set(key, result);
   return result;

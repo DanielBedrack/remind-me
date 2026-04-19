@@ -30,21 +30,20 @@ function loadLeaflet(): Promise<any> {
 // ─── Web map component ───────────────────────────────────────────────────────
 
 function WebMap({ lat, lng, stores }: { lat: number; lng: number; stores: StoreWithItems[] }) {
-  const mapRef  = useRef<any>(null);
-  const leafRef = useRef<any>(null);
+  const mapRef      = useRef<any>(null);
+  const leafRef     = useRef<any>(null);
+  const markersRef  = useRef<any[]>([]);
+  const userMarkRef = useRef<any>(null);
 
+  // ── Init map once (lat/lng change = pan, not rebuild) ──────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const L   = await loadLeaflet();
+      const L = await loadLeaflet();
       if (cancelled || !mapRef.current) return;
-
-      const domEl = mapRef.current;
-
-      // Destroy previous instance if remounting
       if (leafRef.current) { leafRef.current.remove(); leafRef.current = null; }
 
-      const map = L.map(domEl, { zoomControl: true }).setView([lat, lng], 15);
+      const map = L.map(mapRef.current, { zoomControl: true }).setView([lat, lng], 15);
       leafRef.current = map;
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -52,47 +51,57 @@ function WebMap({ lat, lng, stores }: { lat: number; lng: number; stores: StoreW
         maxZoom: 19,
       }).addTo(map);
 
-      // User marker
       const userIcon = L.divIcon({
         html: `<div style="width:16px;height:16px;border-radius:50%;background:#5B9EFF;border:3px solid #fff;box-shadow:0 0 8px rgba(91,158,255,0.8)"></div>`,
-        className: '',
-        iconAnchor: [8, 8],
+        className: '', iconAnchor: [8, 8],
       });
-      L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup('<b>You are here</b>');
-
-      // Store markers
-      for (const store of stores) {
-        const color = STORE_COLORS[store.storeType];
-        const storeIcon = L.divIcon({
-          html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.5)"></div>`,
-          className: '',
-          iconAnchor: [7, 7],
-        });
-        const popup = `
-          <div style="font-family:sans-serif;min-width:140px">
-            <b style="font-size:14px">${store.name}</b><br/>
-            <span style="color:#888;font-size:12px">${store.vicinity || STORE_TYPE_LABELS[store.storeType]}</span><br/>
-            <div style="margin-top:6px;font-size:12px">
-              ${store.itemNames.map((n) => `<span style="display:inline-block;background:${color}22;color:${color};border-radius:4px;padding:2px 6px;margin:2px">${n}</span>`).join('')}
-            </div>
-            <div style="margin-top:4px;color:#aaa;font-size:11px">${store.distanceM < 1000 ? `${Math.round(store.distanceM)}m away` : `${(store.distanceM / 1000).toFixed(1)}km away`}</div>
-          </div>`;
-        L.marker([store.lat, store.lng], { icon: storeIcon }).addTo(map).bindPopup(popup);
-      }
+      userMarkRef.current = L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup('<b>You are here</b>');
     })();
     return () => { cancelled = true; };
-  }, [lat, lng, stores]);
+  }, [lat, lng]);
+
+  // ── Re-draw store markers when stores array changes ────────────────────────
+  useEffect(() => {
+    const map = leafRef.current;
+    if (!map) return;
+    const L = (window as any).L;
+    if (!L) return;
+
+    // Clear old store markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    for (const store of stores) {
+      const color = STORE_COLORS[store.storeType];
+      const icon  = L.divIcon({
+        html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6)"></div>`,
+        className: '', iconAnchor: [9, 9],
+      });
+      const popup = `
+        <div style="font-family:sans-serif;min-width:150px;padding:4px">
+          <b style="font-size:14px">${store.name}</b><br/>
+          <span style="color:#888;font-size:12px">${store.vicinity || STORE_TYPE_LABELS[store.storeType]}</span>
+          <div style="margin-top:6px;font-size:12px">
+            ${store.itemNames.map((n) => `<span style="display:inline-block;background:${color}22;color:${color};border-radius:4px;padding:2px 6px;margin:2px">${n}</span>`).join('')}
+          </div>
+          <div style="margin-top:4px;color:#aaa;font-size:11px">${store.distanceM < 1000 ? `${Math.round(store.distanceM)}m` : `${(store.distanceM / 1000).toFixed(1)}km`} away</div>
+        </div>`;
+      const marker = L.marker([store.lat, store.lng], { icon }).addTo(map).bindPopup(popup);
+      markersRef.current.push(marker);
+    }
+  }, [stores]);
 
   function centerOnUser() {
     leafRef.current?.setView([lat, lng], 16, { animate: true });
   }
 
-  // Cleanup on unmount
   useEffect(() => () => { leafRef.current?.remove(); leafRef.current = null; }, []);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+    // position:relative + flex:1 gives the container a real pixel height on mobile
+    <div style={{ position: 'relative', flex: 1 }}>
+      {/* position:absolute fills the flex parent reliably on all mobile browsers */}
+      <div ref={mapRef} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       <button
         onClick={centerOnUser}
         title="Center on my location"
@@ -222,7 +231,7 @@ export default function MapScreen() {
       </View>
 
       {Platform.OS === 'web'
-        ? <WebMap lat={lat} lng={lng} stores={stores} />
+        ? <View style={{ flex: 1 }}><WebMap lat={lat} lng={lng} stores={stores} /></View>
         : <NativeStoreList stores={stores} loading={fetching} />
       }
     </View>
